@@ -14,6 +14,7 @@ VARIABLES
     leaderEpoch,
     localLogs,
     aliveBrokers,
+    readyToFetchBrokers,
     isrs,
     leader
 
@@ -27,9 +28,9 @@ Leo(broker) ==
 LeaderEpochStartOffset ==
     LET currentEpochLogs == SelectSeq(localLogs[leader], LAMBDA m : m.leaderEpoch = leaderEpoch)
      IN IF Len(currentEpochLogs) > 0 THEN
-           currentEpochLogs[1].offset
+            currentEpochLogs[1].offset
         ELSE
-           Last(SelectSeq(localLogs[leader], LAMBDA m : m.leaderEpoch = leaderEpoch - 1)).offset + 1
+            Last(localLogs[leader]).offset + 1
 
 UnreplicatedLogs(broker) ==
     LET i == CHOOSE j \in 1..Len(localLogs[leader]) : SubSeq(localLogs[leader], 1, j) = localLogs[broker]
@@ -46,10 +47,9 @@ HighWatermark ==
     Last(committedLogs).offset
 
 TruncatedLog(broker, newLeader) ==
-    LET lastLeaderEpoch == Last(localLogs[newLeader]).leaderEpoch
-        lastOffset == Last(localLogs[newLeader]).offset
-     IN SelectSeq(localLogs[broker], LAMBDA m : m.leaderEpoch < lastLeaderEpoch \/
-                                                (m.leaderEpoch = lastLeaderEpoch /\ m.offset <= lastOffset))
+    LET minLogLen == Min({Len(localLogs[broker]), Len(localLogs[newLeader])})
+        commonPrefixIdx == {i \in 1..minLogLen: SubSeq(localLogs[broker], 1, i) = SubSeq(localLogs[newLeader], 1, i)}
+     IN SubSeq(localLogs[broker], 1, Max(commonPrefixIdx))
 
 \* Supply one log at initial just for simplicity so that
 \* we can retrieve the element of logs without considering empty case
@@ -61,6 +61,7 @@ Init ==
     /\ aliveBrokers = Brokers
     /\ isrs = Brokers
     /\ leader = UnstableBroker
+    /\ readyToFetchBrokers = Brokers \ {leader}
 
 AppendToLeader ==
     /\ leader \in aliveBrokers
@@ -68,11 +69,12 @@ AppendToLeader ==
     /\ localLogs[leader] = committedLogs
     /\ nextOffset' = nextOffset + 1
     /\ localLogs' = [localLogs EXCEPT![leader] = Append(@, [offset |-> nextOffset, leaderEpoch |-> leaderEpoch])]
-    /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader>>
+    /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers>>
 
 Replicate(broker) ==
     /\ ~NoLeader
     /\ broker \in aliveBrokers
+    /\ broker \in readyToFetchBrokers
     /\ broker /= leader
     /\ LET unreplicatedLogs == UnreplicatedLogs(broker)
         IN IF Len(unreplicatedLogs) = 0 THEN
@@ -91,7 +93,7 @@ Replicate(broker) ==
                                    committedLogs
                      IN /\ localLogs' = newLocalLogs
                         /\ committedLogs' = newCommittedLogs
-    /\ UNCHANGED <<nextOffset, leaderEpoch, aliveBrokers, isrs, leader>>
+    /\ UNCHANGED <<nextOffset, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers>>
 
 BecomeOutOfSync(broker) ==
     /\ ~NoLeader
@@ -109,18 +111,30 @@ BecomeOutOfSync(broker) ==
                ELSE
                       committedLogs
         IN /\ committedLogs' = newCommittedLogs
-    /\ UNCHANGED <<nextOffset, leaderEpoch, localLogs, aliveBrokers, leader>>
+    /\ UNCHANGED <<nextOffset, leaderEpoch, localLogs, aliveBrokers, leader, readyToFetchBrokers>>
 
 BecomeInSync(broker) ==
     /\ ~NoLeader
     /\ broker /= leader
     /\ broker \notin isrs
     /\ broker \in aliveBrokers
+    /\ broker \in readyToFetchBrokers
     \* condition in Partition#isFollowerInSync
     /\ /\ Leo(broker) >= HighWatermark
        /\ Leo(broker) >= LeaderEpochStartOffset
     /\ isrs' = isrs \cup {broker}
-    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, aliveBrokers, leader>>
+    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, aliveBrokers, leader, readyToFetchBrokers>>
+
+ElectLeader(broker) ==
+    /\ ~NoLeader
+    /\ broker /= leader
+    /\ broker \in isrs
+    /\ broker \in aliveBrokers
+    /\ nextOffset' = Last(localLogs[broker]).offset + 1
+    /\ leaderEpoch' = leaderEpoch + 1
+    /\ leader' = broker
+    /\ readyToFetchBrokers' = {}
+    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs>>
 
 ShutdownUnstableLeader ==
     /\ leader = UnstableBroker
@@ -128,7 +142,7 @@ ShutdownUnstableLeader ==
     /\ isrs = {UnstableBroker}
     /\ aliveBrokers' = aliveBrokers \ {UnstableBroker}
     /\ leader' = -1
-    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, isrs>>
+    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, isrs, readyToFetchBrokers>>
 
 \*UncleanLeaderElection ==
 \*    /\ NoLeader
@@ -152,15 +166,26 @@ UncleanLeaderElection2 ==
             /\ leaderEpoch' = leaderEpoch + 1
             /\ isrs' = {broker}
             /\ leader' = broker
-            /\ \A f \in aliveBrokers \ {broker}:
-                localLogs' = [localLogs EXCEPT![f] = TruncatedLog(f, broker)]
-            /\ UNCHANGED <<committedLogs, aliveBrokers>>
+            /\ readyToFetchBrokers' = {}
+            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
+
+MakeFollower(broker) ==
+    /\ ~NoLeader
+    /\ broker \notin readyToFetchBrokers
+    /\ broker \in aliveBrokers
+    /\ broker /= leader
+    /\ localLogs' = [localLogs EXCEPT![broker] = TruncatedLog(broker, leader)]
+    /\ readyToFetchBrokers' = readyToFetchBrokers \cup {broker}
+    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, aliveBrokers, isrs, leader>>
 
 Next ==
     \/ AppendToLeader
-    \/ \E broker \in Brokers: Replicate(broker)
-    \/ \E broker \in Brokers: BecomeOutOfSync(broker)
-    \/ \E broker \in Brokers: BecomeInSync(broker)
+    \/ \E broker \in Brokers:
+        \/ Replicate(broker)
+        \/ BecomeOutOfSync(broker)
+        \/ BecomeInSync(broker)
+        \/ ElectLeader(broker)
+        \/ MakeFollower(broker)
     \/ ShutdownUnstableLeader
 \*    \/ UncleanLeaderElection
     \/ UncleanLeaderElection2
