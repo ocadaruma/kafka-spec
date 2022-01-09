@@ -4,7 +4,7 @@ EXTENDS Integers, Sequences, FiniteSets, Util, TLC
 \* Just use operator instead of constant for smooth prototyping
 Brokers == 1..3
 UnstableBroker == 1
-MinISR == 2
+MinIsr == 2
 
 VARIABLES
     \* sequence of records ([offset |-> integer, leaderEpoch |-> integer]) that
@@ -82,7 +82,7 @@ Replicate(broker) ==
                 \E i \in 1..Len(unreplicatedLogs):
                     LET newLocalLogs == [localLogs EXCEPT![broker] = @ \o SubSeq(unreplicatedLogs, 1, i)]
                         newCommittedLogs ==
-                            IF Cardinality(isrs) >= MinISR THEN
+                            IF Cardinality(isrs) >= MinIsr THEN
                                 LET minLogLen == Min({Len(newLocalLogs[b]) : b \in isrs})
                                     committed == {k \in 1..minLogLen: \A b \in isrs \ {leader}:
                                                     SubSeq(newLocalLogs[b], 1, k) = SubSeq(newLocalLogs[leader], 1, k)}
@@ -101,7 +101,7 @@ BecomeOutOfSync(broker) ==
     /\ isrs' = isrs \ {broker}
     /\ LET newIsrs == isrs \ {broker}
            newCommittedLogs ==
-               IF Cardinality(newIsrs) >= MinISR THEN
+               IF Cardinality(newIsrs) >= MinIsr THEN
                    LET minLogLen == Min({Len(localLogs[b]) : b \in newIsrs})
                        committed == {k \in 1..minLogLen: \A b \in newIsrs \ {leader}:
                                        SubSeq(localLogs[b], 1, k) = SubSeq(localLogs[leader], 1, k)}
@@ -130,16 +130,31 @@ ShutdownUnstableLeader ==
     /\ leader' = -1
     /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, isrs>>
 
-UncleanLeaderElection ==
+\*UncleanLeaderElection ==
+\*    /\ NoLeader
+\*    /\ \E broker \in aliveBrokers:
+\*        /\ nextOffset' = Last(localLogs[broker]).offset + 1
+\*        /\ leaderEpoch' = leaderEpoch + 1
+\*        /\ isrs' = {broker}
+\*        /\ leader' = broker
+\*        /\ \A f \in aliveBrokers \ {broker}:
+\*            localLogs' = [localLogs EXCEPT![f] = TruncatedLog(f, broker)]
+\*        /\ UNCHANGED <<committedLogs, aliveBrokers>>
+
+\* Modified version that elect new leader that has longest local log
+UncleanLeaderElection2 ==
     /\ NoLeader
-    /\ \E broker \in aliveBrokers:
-        /\ nextOffset' = Last(localLogs[broker]).offset + 1
-        /\ leaderEpoch' = leaderEpoch + 1
-        /\ isrs' = {broker}
-        /\ leader' = broker
-        /\ \A f \in aliveBrokers \ {broker}:
-            localLogs' = [localLogs EXCEPT![f] = TruncatedLog(f, broker)]
-        /\ UNCHANGED <<committedLogs, aliveBrokers>>
+    /\ LET longestLogBrokers ==
+            {broker \in aliveBrokers:
+                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
+        IN \E broker \in longestLogBrokers:
+            /\ nextOffset' = Last(localLogs[broker]).offset + 1
+            /\ leaderEpoch' = leaderEpoch + 1
+            /\ isrs' = {broker}
+            /\ leader' = broker
+            /\ \A f \in aliveBrokers \ {broker}:
+                localLogs' = [localLogs EXCEPT![f] = TruncatedLog(f, broker)]
+            /\ UNCHANGED <<committedLogs, aliveBrokers>>
 
 Next ==
     \/ AppendToLeader
@@ -147,7 +162,8 @@ Next ==
     \/ \E broker \in Brokers: BecomeOutOfSync(broker)
     \/ \E broker \in Brokers: BecomeInSync(broker)
     \/ ShutdownUnstableLeader
-    \/ UncleanLeaderElection
+\*    \/ UncleanLeaderElection
+    \/ UncleanLeaderElection2
 
 \* Invariants
 CommittedLogNotLost ==
