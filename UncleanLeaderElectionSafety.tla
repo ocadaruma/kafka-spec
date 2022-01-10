@@ -156,11 +156,27 @@ ShutdownUnstableLeader ==
 \*        /\ UNCHANGED <<committedLogs, aliveBrokers>>
 
 \* Modified version that elect new leader that has longest local log
-UncleanLeaderElection2 ==
+\*UncleanLeaderElection2 ==
+\*    /\ NoLeader
+\*    /\ LET longestLogBrokers ==
+\*            {broker \in aliveBrokers:
+\*                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
+\*        IN \E broker \in longestLogBrokers:
+\*            /\ nextOffset' = Last(localLogs[broker]).offset + 1
+\*            /\ leaderEpoch' = leaderEpoch + 1
+\*            /\ isrs' = {broker}
+\*            /\ leader' = broker
+\*            /\ readyToFetchBrokers' = {}
+\*            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
+
+UncleanLeaderElection3 ==
     /\ NoLeader
-    /\ LET longestLogBrokers ==
+    /\ LET largestEpochBrokers ==
             {broker \in aliveBrokers:
-                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
+                \A other \in aliveBrokers \ {broker}: Last(localLogs[broker]).leaderEpoch >= Last(localLogs[other]).leaderEpoch}
+           longestLogBrokers ==
+            {broker \in largestEpochBrokers:
+                \A other \in largestEpochBrokers \ {broker}: Last(localLogs[broker]).offset >= Last(localLogs[other]).offset}
         IN \E broker \in longestLogBrokers:
             /\ nextOffset' = Last(localLogs[broker]).offset + 1
             /\ leaderEpoch' = leaderEpoch + 1
@@ -188,7 +204,7 @@ Next ==
         \/ MakeFollower(broker)
     \/ ShutdownUnstableLeader
 \*    \/ UncleanLeaderElection
-    \/ UncleanLeaderElection2
+    \/ UncleanLeaderElection3
 
 \* Invariants
 CommittedLogNotLost ==
