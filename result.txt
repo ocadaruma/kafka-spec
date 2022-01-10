@@ -1,0 +1,126 @@
+1. Initial predicate
+nextOffset	2
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	1
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
+readyToFetchBrokers	{2, 3}
+aliveBrokers	1..3
+leader	1
+isrs	1..3
+2. UncleanLeaderElectionSafety:AppendToLeader
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	1
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
+readyToFetchBrokers	{2, 3}
+aliveBrokers	1..3
+leader	1
+isrs	1..3
+3. UncleanLeaderElectionSafety:BecomeOutOfSync
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	1
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
+readyToFetchBrokers	{2, 3}
+aliveBrokers	1..3
+leader	1
+isrs	{1, 3}
+4. UncleanLeaderElectionSafety:ElectLeader
+nextOffset	2
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	2
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
+readyToFetchBrokers	{}
+aliveBrokers	1..3
+leader	3
+isrs	{1, 3}
+5. UncleanLeaderElectionSafety:AppendToLeader
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	2
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
+readyToFetchBrokers	{}
+aliveBrokers	1..3
+leader	3
+isrs	{1, 3}
+6. UncleanLeaderElectionSafety:MakeFollower
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	2
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
+readyToFetchBrokers	{2}
+aliveBrokers	1..3
+leader	3
+isrs	{1, 3}
+7. UncleanLeaderElectionSafety:Replicate
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	2
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
+readyToFetchBrokers	{2}
+aliveBrokers	1..3
+leader	3
+isrs	{1, 3}
+8. UncleanLeaderElectionSafety:ElectLeader
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	3
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
+readyToFetchBrokers	{}
+aliveBrokers	1..3
+leader	1
+isrs	{1, 3}
+9. UncleanLeaderElectionSafety:MakeFollower
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+leaderEpoch	3
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
+readyToFetchBrokers	{3}
+aliveBrokers	1..3
+leader	1
+isrs	{1, 3}
+10. UncleanLeaderElectionSafety:Replicate
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+leaderEpoch	3
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
+readyToFetchBrokers	{3}
+aliveBrokers	1..3
+leader	1
+isrs	{1, 3}
+11. UncleanLeaderElectionSafety:AppendToLeader
+nextOffset	4
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+leaderEpoch	3
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
+readyToFetchBrokers	{3}
+aliveBrokers	1..3
+leader	1
+isrs	{1, 3}
+12. UncleanLeaderElectionSafety:BecomeOutOfSync
+nextOffset	4
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+leaderEpoch	3
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
+readyToFetchBrokers	{3}
+aliveBrokers	1..3
+leader	1
+isrs	{1}
+13. UncleanLeaderElectionSafety:ShutdownUnstableLeader
+nextOffset	4
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+leaderEpoch	3
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
+readyToFetchBrokers	{3}
+aliveBrokers	{2, 3}
+leader	-1
+isrs	{1}
+14. UncleanLeaderElectionSafety:UncleanLeaderElection3
+nextOffset	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+leaderEpoch	4
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
+readyToFetchBrokers	{}
+aliveBrokers	{2, 3}
+leader	2
+isrs	{2}
