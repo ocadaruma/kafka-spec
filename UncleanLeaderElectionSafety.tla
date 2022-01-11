@@ -1,10 +1,11 @@
 ---- MODULE UncleanLeaderElectionSafety ----
-EXTENDS Integers, Sequences, FiniteSets, Util, TLC
+EXTENDS Integers, Sequences, FiniteSets, Util
 
 \* Just use operator instead of constant for smooth prototyping
 Brokers == 1..3
 UnstableBroker == 1
 MinIsr == 2
+MaxLogLen == 3
 
 VARIABLES
     \* sequence of records ([offset |-> integer, leaderEpoch |-> integer]) that
@@ -65,8 +66,9 @@ Init ==
 
 AppendToLeader ==
     /\ leader \in aliveBrokers
-    \* further produce not sent until corrent one is committed
+    \* further produce not sent until corrent one is committed (max.inflight.requests.per.connection = 1)
     /\ localLogs[leader] = committedLogs
+    /\ Len(localLogs[leader]) <= MaxLogLen
     /\ nextOffset' = nextOffset + 1
     /\ localLogs' = [localLogs EXCEPT![leader] = Append(@, [offset |-> nextOffset, leaderEpoch |-> leaderEpoch])]
     /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers>>
@@ -125,7 +127,18 @@ BecomeInSync(broker) ==
     /\ isrs' = isrs \cup {broker}
     /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, aliveBrokers, leader, readyToFetchBrokers>>
 
-ElectLeader(broker) ==
+PreferredLeaderElection ==
+    /\ ~NoLeader
+    /\ UnstableBroker /= leader
+    /\ UnstableBroker \in isrs
+    /\ UnstableBroker \in aliveBrokers
+    /\ nextOffset' = Last(localLogs[UnstableBroker]).offset + 1
+    /\ leaderEpoch' = leaderEpoch + 1
+    /\ leader' = UnstableBroker
+    /\ readyToFetchBrokers' = {}
+    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs>>
+
+SwapLeadership(broker) ==
     /\ ~NoLeader
     /\ broker /= leader
     /\ broker \in isrs
@@ -135,6 +148,20 @@ ElectLeader(broker) ==
     /\ leader' = broker
     /\ readyToFetchBrokers' = {}
     /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs>>
+
+ElectNewLeaderBecauseCurrentLeaderGotLost(broker) ==
+    /\ ~NoLeader
+    /\ broker /= leader
+    /\ broker \in isrs
+    /\ broker \in aliveBrokers
+    \* On leadership change, left-most isr in replica list will be elected
+    /\ broker = Min(isrs \ {leader})
+    /\ nextOffset' = Last(localLogs[broker]).offset + 1
+    /\ leaderEpoch' = leaderEpoch + 1
+    /\ leader' = broker
+    /\ readyToFetchBrokers' = {}
+    /\ isrs' = isrs \ {leader}
+    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers>>
 
 ShutdownUnstableLeader ==
     /\ leader = UnstableBroker
@@ -156,18 +183,18 @@ ShutdownUnstableLeader ==
 \*        /\ UNCHANGED <<committedLogs, aliveBrokers>>
 
 \* Modified version that elect new leader that has longest local log
-\*UncleanLeaderElection2 ==
-\*    /\ NoLeader
-\*    /\ LET longestLogBrokers ==
-\*            {broker \in aliveBrokers:
-\*                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
-\*        IN \E broker \in longestLogBrokers:
-\*            /\ nextOffset' = Last(localLogs[broker]).offset + 1
-\*            /\ leaderEpoch' = leaderEpoch + 1
-\*            /\ isrs' = {broker}
-\*            /\ leader' = broker
-\*            /\ readyToFetchBrokers' = {}
-\*            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
+UncleanLeaderElection2 ==
+    /\ NoLeader
+    /\ LET longestLogBrokers ==
+            {broker \in aliveBrokers:
+                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
+        IN \E broker \in longestLogBrokers:
+            /\ nextOffset' = Last(localLogs[broker]).offset + 1
+            /\ leaderEpoch' = leaderEpoch + 1
+            /\ isrs' = {broker}
+            /\ leader' = broker
+            /\ readyToFetchBrokers' = {}
+            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
 
 UncleanLeaderElection3 ==
     /\ NoLeader
@@ -200,13 +227,14 @@ Next ==
         \/ Replicate(broker)
         \/ BecomeOutOfSync(broker)
         \/ BecomeInSync(broker)
-        \/ ElectLeader(broker)
+        \/ ElectNewLeaderBecauseCurrentLeaderGotLost(broker)
+        \/ SwapLeadership(broker)
         \/ MakeFollower(broker)
     \/ ShutdownUnstableLeader
+    \/ PreferredLeaderElection
 \*    \/ UncleanLeaderElection
     \/ UncleanLeaderElection3
 
 \* Invariants
-CommittedLogNotLost ==
-    NoLeader \/ ContainsSeq(localLogs[leader], committedLogs)
+CommittedLogNotLost == NoLeader \/ ContainsSeq(localLogs[leader], committedLogs)
 ====
