@@ -1,11 +1,17 @@
 ---- MODULE UncleanLeaderElectionSafety ----
 EXTENDS Integers, Sequences, FiniteSets, Util
 
-\* Just use operator instead of constant for smooth prototyping
-Brokers == 1..3
-UnstableBroker == 1
-MinIsr == 2
-MaxLogLen == 3
+CONSTANTS
+    Brokers,
+    UnstableBroker,
+    MinIsr,
+    MaxLogLen
+
+ASSUME
+    /\ Brokers \subseteq Nat
+    /\ UnstableBroker \in Brokers
+    /\ MinIsr \in Nat /\ MinIsr > 0 /\ MinIsr <= Cardinality(Brokers)
+    /\ MaxLogLen \in Nat /\ MaxLogLen > 0
 
 VARIABLES
     \* sequence of records ([offset |-> integer, leaderEpoch |-> integer]) that
@@ -18,6 +24,24 @@ VARIABLES
     readyToFetchBrokers,
     isrs,
     leader
+
+vars == <<committedLogs,
+          nextOffset,
+          leaderEpoch,
+          localLogs,
+          aliveBrokers,
+          readyToFetchBrokers,
+          isrs,
+          leader>>
+
+TypeOK ==
+    /\ \A i \in DOMAIN committedLogs: committedLogs[i] \in [{"offset", "leaderEpoch"} -> Int]
+    /\ nextOffset \in Int
+    /\ leaderEpoch \in Int
+    /\ aliveBrokers \subseteq Brokers
+    /\ readyToFetchBrokers \subseteq Brokers
+    /\ isrs \subseteq Brokers
+    /\ leader = -1 \/ leader \in Brokers
 
 \* Helpers
 
@@ -178,23 +202,22 @@ ShutdownUnstableLeader ==
 \*        /\ leaderEpoch' = leaderEpoch + 1
 \*        /\ isrs' = {broker}
 \*        /\ leader' = broker
-\*        /\ \A f \in aliveBrokers \ {broker}:
-\*            localLogs' = [localLogs EXCEPT![f] = TruncatedLog(f, broker)]
-\*        /\ UNCHANGED <<committedLogs, aliveBrokers>>
+\*        /\ readyToFetchBrokers' = {}
+\*        /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
 
 \* Modified version that elect new leader that has longest local log
-UncleanLeaderElection2 ==
-    /\ NoLeader
-    /\ LET longestLogBrokers ==
-            {broker \in aliveBrokers:
-                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
-        IN \E broker \in longestLogBrokers:
-            /\ nextOffset' = Last(localLogs[broker]).offset + 1
-            /\ leaderEpoch' = leaderEpoch + 1
-            /\ isrs' = {broker}
-            /\ leader' = broker
-            /\ readyToFetchBrokers' = {}
-            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
+\*UncleanLeaderElection2 ==
+\*    /\ NoLeader
+\*    /\ LET longestLogBrokers ==
+\*            {broker \in aliveBrokers:
+\*                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
+\*        IN \E broker \in longestLogBrokers:
+\*            /\ nextOffset' = Last(localLogs[broker]).offset + 1
+\*            /\ leaderEpoch' = leaderEpoch + 1
+\*            /\ isrs' = {broker}
+\*            /\ leader' = broker
+\*            /\ readyToFetchBrokers' = {}
+\*            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
 
 UncleanLeaderElection3 ==
     /\ NoLeader
@@ -234,6 +257,8 @@ Next ==
     \/ PreferredLeaderElection
 \*    \/ UncleanLeaderElection
     \/ UncleanLeaderElection3
+
+Spec == Init /\ [][Next]_vars
 
 \* Invariants
 CommittedLogNotLost == NoLeader \/ ContainsSeq(localLogs[leader], committedLogs)
