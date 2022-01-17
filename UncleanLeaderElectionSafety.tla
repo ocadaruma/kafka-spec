@@ -5,13 +5,15 @@ CONSTANTS
     Brokers,
     UnstableBroker,
     MinIsr,
-    MaxLogLen
+    MaxLogLen,
+    Producers
 
 ASSUME
     /\ Brokers \subseteq Nat
     /\ UnstableBroker \in Brokers
     /\ MinIsr \in Nat /\ MinIsr > 0 /\ MinIsr <= Cardinality(Brokers)
     /\ MaxLogLen \in Nat /\ MaxLogLen > 0
+    /\ Producers \subseteq Nat
 
 VARIABLES
     \* sequence of records ([offset |-> integer, leaderEpoch |-> integer]) that
@@ -23,7 +25,8 @@ VARIABLES
     aliveBrokers,
     readyToFetchBrokers,
     isrs,
-    leader
+    leader,
+    inflightProducers
 
 vars == <<committedLogs,
           nextOffset,
@@ -32,16 +35,18 @@ vars == <<committedLogs,
           aliveBrokers,
           readyToFetchBrokers,
           isrs,
-          leader>>
+          leader,
+          inflightProducers>>
 
 TypeOK ==
-    /\ \A i \in DOMAIN committedLogs: committedLogs[i] \in [{"offset", "leaderEpoch"} -> Int]
+    /\ \A i \in DOMAIN committedLogs: committedLogs[i] \in [{"offset", "leaderEpoch", "producer"} -> Int]
     /\ nextOffset \in Int
     /\ leaderEpoch \in Int
     /\ aliveBrokers \subseteq Brokers
     /\ readyToFetchBrokers \subseteq Brokers
     /\ isrs \subseteq Brokers
     /\ leader = -1 \/ leader \in Brokers
+    /\ inflightProducers \subseteq Producers
 
 \* Helpers
 
@@ -79,23 +84,29 @@ TruncatedLog(broker, newLeader) ==
 \* Supply one log at initial just for simplicity so that
 \* we can retrieve the element of logs without considering empty case
 Init ==
-    /\ committedLogs = <<[offset |-> 1, leaderEpoch |-> 1]>>
+    /\ committedLogs = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
     /\ nextOffset = 2
     /\ leaderEpoch = 1
-    /\ localLogs = [broker \in Brokers |-> <<[offset |-> 1, leaderEpoch |-> 1]>>]
+    /\ localLogs = [broker \in Brokers |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>]
     /\ aliveBrokers = Brokers
     /\ isrs = Brokers
     /\ leader = UnstableBroker
     /\ readyToFetchBrokers = Brokers \ {leader}
+    /\ inflightProducers = {}
 
 AppendToLeader ==
     /\ leader \in aliveBrokers
-    \* further produce not sent until corrent one is committed (max.inflight.requests.per.connection = 1)
-    /\ localLogs[leader] = committedLogs
     /\ Len(localLogs[leader]) <= MaxLogLen
-    /\ nextOffset' = nextOffset + 1
-    /\ localLogs' = [localLogs EXCEPT![leader] = Append(@, [offset |-> nextOffset, leaderEpoch |-> leaderEpoch])]
-    /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers>>
+    /\ LET readyProducers == Producers \ inflightProducers
+        \* further produce not sent until corrent one is committed (max.inflight.requests.per.connection = 1)
+        IN /\ Cardinality(readyProducers) > 0
+           /\ \E p \in readyProducers:
+                /\ nextOffset' = nextOffset + 1
+                /\ localLogs' = [localLogs EXCEPT![leader] = Append(@, [offset |-> nextOffset,
+                                                                        leaderEpoch |-> leaderEpoch,
+                                                                        producer |-> p])]
+                /\ inflightProducers' = inflightProducers \cup {p}
+                /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers>>
 
 Replicate(broker) ==
     /\ ~NoLeader
@@ -106,6 +117,7 @@ Replicate(broker) ==
         IN IF Len(unreplicatedLogs) = 0 THEN
                 /\ localLogs' = localLogs
                 /\ committedLogs' = committedLogs
+                /\ UNCHANGED <<inflightProducers>>
            ELSE
                 \E i \in 1..Len(unreplicatedLogs):
                     LET newLocalLogs == [localLogs EXCEPT![broker] = @ \o SubSeq(unreplicatedLogs, 1, i)]
@@ -119,6 +131,8 @@ Replicate(broker) ==
                                    committedLogs
                      IN /\ localLogs' = newLocalLogs
                         /\ committedLogs' = newCommittedLogs
+                        /\ inflightProducers' = inflightProducers \ {newCommittedLogs[r].producer:
+                                                                        r \in DOMAIN newCommittedLogs \ DOMAIN committedLogs}
     /\ UNCHANGED <<nextOffset, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers>>
 
 BecomeOutOfSync(broker) ==
@@ -137,6 +151,8 @@ BecomeOutOfSync(broker) ==
                ELSE
                       committedLogs
         IN /\ committedLogs' = newCommittedLogs
+           /\ inflightProducers' = inflightProducers \ {newCommittedLogs[r].producer:
+                                                           r \in DOMAIN newCommittedLogs \ DOMAIN committedLogs}
     /\ UNCHANGED <<nextOffset, leaderEpoch, localLogs, aliveBrokers, leader, readyToFetchBrokers>>
 
 BecomeInSync(broker) ==
@@ -149,7 +165,14 @@ BecomeInSync(broker) ==
     /\ /\ Leo(broker) >= HighWatermark
        /\ Leo(broker) >= LeaderEpochStartOffset
     /\ isrs' = isrs \cup {broker}
-    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, aliveBrokers, leader, readyToFetchBrokers>>
+    /\ UNCHANGED <<committedLogs,
+                   nextOffset,
+                   leaderEpoch,
+                   localLogs,
+                   aliveBrokers,
+                   leader,
+                   readyToFetchBrokers,
+                   inflightProducers>>
 
 PreferredLeaderElection ==
     /\ ~NoLeader
@@ -160,7 +183,7 @@ PreferredLeaderElection ==
     /\ leaderEpoch' = leaderEpoch + 1
     /\ leader' = UnstableBroker
     /\ readyToFetchBrokers' = {}
-    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs>>
+    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs, inflightProducers>>
 
 SwapLeadership(broker) ==
     /\ ~NoLeader
@@ -171,7 +194,7 @@ SwapLeadership(broker) ==
     /\ leaderEpoch' = leaderEpoch + 1
     /\ leader' = broker
     /\ readyToFetchBrokers' = {}
-    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs>>
+    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs, inflightProducers>>
 
 ElectNewLeaderBecauseCurrentLeaderGotLost(broker) ==
     /\ ~NoLeader
@@ -185,7 +208,7 @@ ElectNewLeaderBecauseCurrentLeaderGotLost(broker) ==
     /\ leader' = broker
     /\ readyToFetchBrokers' = {}
     /\ isrs' = isrs \ {leader}
-    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers>>
+    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, inflightProducers>>
 
 ShutdownUnstableLeader ==
     /\ leader = UnstableBroker
@@ -193,7 +216,7 @@ ShutdownUnstableLeader ==
     /\ isrs = {UnstableBroker}
     /\ aliveBrokers' = aliveBrokers \ {UnstableBroker}
     /\ leader' = -1
-    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, isrs, readyToFetchBrokers>>
+    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, localLogs, isrs, readyToFetchBrokers, inflightProducers>>
 
 \*UncleanLeaderElection ==
 \*    /\ NoLeader
@@ -233,7 +256,7 @@ UncleanLeaderElection3 ==
             /\ isrs' = {broker}
             /\ leader' = broker
             /\ readyToFetchBrokers' = {}
-            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs>>
+            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs, inflightProducers>>
 
 MakeFollower(broker) ==
     /\ ~NoLeader
@@ -242,7 +265,7 @@ MakeFollower(broker) ==
     /\ broker /= leader
     /\ localLogs' = [localLogs EXCEPT![broker] = TruncatedLog(broker, leader)]
     /\ readyToFetchBrokers' = readyToFetchBrokers \cup {broker}
-    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, aliveBrokers, isrs, leader>>
+    /\ UNCHANGED <<committedLogs, nextOffset, leaderEpoch, aliveBrokers, isrs, leader, inflightProducers>>
 
 Next ==
     \/ AppendToLeader
@@ -250,7 +273,7 @@ Next ==
         \/ Replicate(broker)
         \/ BecomeOutOfSync(broker)
         \/ BecomeInSync(broker)
-        \/ ElectNewLeaderBecauseCurrentLeaderGotLost(broker)
+\*        \/ ElectNewLeaderBecauseCurrentLeaderGotLost(broker)
         \/ SwapLeadership(broker)
         \/ MakeFollower(broker)
     \/ ShutdownUnstableLeader
