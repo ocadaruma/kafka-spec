@@ -1,126 +1,370 @@
+00:00:00	0	1	1	1
+00:00:03	10	147724	60057	37050
+00:01:03	14	7463138	2593217	1415734
+00:02:03	15	14983894	5024416	2666775
+00:03:03	16	21615123	7129645	3733518
+00:04:03	16	28865912	9372063	4831577
+00:05:03	16	35923376	11588265	5924372
+00:06:03	17	43215498	13800105	7013916
+00:07:03	17	49847939	15849233	8002779
+00:08:03	17	57307023	18075181	9038938
+00:09:03	17	63176117	19984940	9998912
+00:10:03	17	70050899	22112849	11022960
+00:11:03	17	79190992	24631304	12171689
+00:12:03	18	85474739	26542144	13088954
+00:13:03	18	91066548	28303214	13953360
+00:14:03	18	97939743	30306258	14860458
+00:15:03	18	104576299	32341028	15837326
+00:16:03	18	112511005	34610322	16829208
+00:17:03	18	118982090	36580602	17780926
+00:18:03	18	124471033	38312836	18627996
+00:19:03	18	131168416	40293484	19544726
+00:20:03	18	137629681	42291399	20492741
+00:21:03	18	145354195	44477597	21446454
+00:22:03	18	154310730	47005622	22630366
+00:23:03	19	160849527	48918142	23510682
+00:24:03	19	167201210	50727344	24324647
+00:25:03	19	172052143	52283151	25107767
+00:26:04	19	176276455	53517399	25688423
+00:27:04	19	180563547	54890601	26322091
+00:28:04	19	186927773	56632189	27039804
+00:29:04	19	193534211	58548953	27948366
+00:30:04	19	199311989	60331928	28797954
+00:31:04	19	205265304	62082782	29574363
+00:31:43	19	208304545	63157002	30093675
+
+
+ProduceBehavior	Init	3	3
+ProduceBehavior	ProduceMessage	3349238	1066473
+ProduceBehavior	UpdateMetadata	25219714	2090830
+ProduceBehavior	Replicate	10744994	1357909
+ProduceBehavior	BecomeOutOfSync	981261	569412
+ProduceBehavior	BecomeInSync	240407	94147
+ProduceBehavior	MakeLeader	25967668	5865812
+ProduceBehavior	PreferredLeaderElection	7063601	6100306
+ProduceBehavior	SwapLeadership	45499776	8470132
+ProduceBehavior	ShutdownUnstableBroker	33063334	11000883
+ProduceBehavior	LeaderFailure	5294716	3210606
+ProduceBehavior	ElectNewLeader	8467491	7423546
+ProduceBehavior	FailedBrokerBack	13229167	7565811
+ProduceBehavior	UncleanLeaderElection3	177192	84622
+ProduceBehavior	MakeFollower	29006133	8256512
+
+
 1. Initial predicate
-nextOffset	2
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
-leaderEpoch	1
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
-readyToFetchBrokers	{2, 3}
-aliveBrokers	1..3
 leader	1
-isrs	1..3
-2. UncleanLeaderElectionSafety:AppendToLeader
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
-leaderEpoch	1
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
 readyToFetchBrokers	{2, 3}
-aliveBrokers	1..3
-leader	1
-isrs	1..3
-3. UncleanLeaderElectionSafety:BecomeOutOfSync
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+aliveBrokers	{1, 2, 3}
+inflightProducers	{}
+produceMessageSeq	<<1, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
+isrs	{1, 2, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 1>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
 leaderEpoch	1
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
-readyToFetchBrokers	{2, 3}
-aliveBrokers	1..3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+2. ProduceBehavior:ProduceMessage
 leader	1
+readyToFetchBrokers	{2, 3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
+isrs	{1, 2, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 1>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+leaderEpoch	1
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+3. ProduceBehavior:BecomeOutOfSync
+leader	1
+readyToFetchBrokers	{2, 3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
 isrs	{1, 3}
-4. UncleanLeaderElectionSafety:ElectLeader
-nextOffset	2
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
-leaderEpoch	2
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
-readyToFetchBrokers	{}
-aliveBrokers	1..3
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 1>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+leaderEpoch	1
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+4. ProduceBehavior:SwapLeadership
+leader	1
+readyToFetchBrokers	{2, 3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
+isrs	{1, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 1>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+leaderEpoch	1
+preferredLeader	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+5. ProduceBehavior:PreferredLeaderElection
 leader	3
-isrs	{1, 3}
-5. UncleanLeaderElectionSafety:AppendToLeader
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
-leaderEpoch	2
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
 readyToFetchBrokers	{}
-aliveBrokers	1..3
-leader	3
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
 isrs	{1, 3}
-6. UncleanLeaderElectionSafety:MakeFollower
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 1>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
 leaderEpoch	2
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
+preferredLeader	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+6. ProduceBehavior:UpdateMetadata
+leader	3
+readyToFetchBrokers	{}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
+isrs	{1, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+leaderEpoch	2
+preferredLeader	3
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+7. ProduceBehavior:SwapLeadership
+leader	3
+readyToFetchBrokers	{}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 1, leader |-> 1]>>
+isrs	{1, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+leaderEpoch	2
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+8. ProduceBehavior:MakeFollower
+leader	3
 readyToFetchBrokers	{2}
-aliveBrokers	1..3
-leader	3
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 1, leader |-> 1]>>
 isrs	{1, 3}
-7. UncleanLeaderElectionSafety:Replicate
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
 leaderEpoch	2
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
-readyToFetchBrokers	{2}
-aliveBrokers	1..3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+9. ProduceBehavior:MakeLeader
 leader	3
+readyToFetchBrokers	{2}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1}
+produceMessageSeq	<<2, 1>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 2, leader |-> 3]>>
+[1]	[leaderEpoch |-> 1, leader |-> 1]
+[2]	[leaderEpoch |-> 2, leader |-> 3]
+[3]	[leaderEpoch |-> 2, leader |-> 3]
 isrs	{1, 3}
-8. UncleanLeaderElectionSafety:ElectLeader
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
-leaderEpoch	3
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+leaderEpoch	2
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+10. ProduceBehavior:ProduceMessage
+leader	3
+readyToFetchBrokers	{2}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<2, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 2, leader |-> 3]>>
+isrs	{1, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]
+leaderEpoch	2
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+11. ProduceBehavior:Replicate
+leader	3
+readyToFetchBrokers	{2}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<2, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 2, leader |-> 3]>>
+isrs	{1, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+leaderEpoch	2
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+12. ProduceBehavior:PreferredLeaderElection
+leader	1
 readyToFetchBrokers	{}
-aliveBrokers	1..3
-leader	1
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<2, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 1, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 2, leader |-> 3]>>
 isrs	{1, 3}
-9. UncleanLeaderElectionSafety:MakeFollower
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]
 leaderEpoch	3
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1]>>>>
-readyToFetchBrokers	{3}
-aliveBrokers	1..3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+13. ProduceBehavior:MakeLeader
 leader	1
+readyToFetchBrokers	{}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<2, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 2, leader |-> 3]>>
 isrs	{1, 3}
-10. UncleanLeaderElectionSafety:Replicate
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>>>
 leaderEpoch	3
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
-readyToFetchBrokers	{3}
-aliveBrokers	1..3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+14. ProduceBehavior:MakeFollower
 leader	1
+readyToFetchBrokers	{3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<2, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 3, leader |-> 1]>>
 isrs	{1, 3}
-11. UncleanLeaderElectionSafety:AppendToLeader
-nextOffset	4
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
 leaderEpoch	3
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
-readyToFetchBrokers	{3}
-aliveBrokers	1..3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]>>
+15. ProduceBehavior:Replicate
 leader	1
+readyToFetchBrokers	{3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{2}
+produceMessageSeq	<<2, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 3, leader |-> 1]>>
 isrs	{1, 3}
-12. UncleanLeaderElectionSafety:BecomeOutOfSync
-nextOffset	4
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
 leaderEpoch	3
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
-readyToFetchBrokers	{3}
-aliveBrokers	1..3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+16. ProduceBehavior:ProduceMessage
 leader	1
+readyToFetchBrokers	{3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<3, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 3, leader |-> 1]>>
+isrs	{1, 3}
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2], [leaderEpoch |-> 3, offset |-> 3, producer |-> 1, producerSeq |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>>>
+[1]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2], [leaderEpoch |-> 3, offset |-> 3, producer |-> 1, producerSeq |-> 3]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+[3]	[leaderEpoch |-> 3, offset |-> 3, producer |-> 1, producerSeq |-> 3]
+[2]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]
+[3]	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+leaderEpoch	3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+[1]	[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1]
+[2]	[leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]
+17. ProduceBehavior:BecomeOutOfSync
+leader	1
+readyToFetchBrokers	{3}
+aliveBrokers	{1, 2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<3, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 3, leader |-> 1]>>
 isrs	{1}
-13. UncleanLeaderElectionSafety:ShutdownUnstableLeader
-nextOffset	4
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
+shutdownBrokers	{}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2], [leaderEpoch |-> 3, offset |-> 3, producer |-> 1, producerSeq |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>>>
 leaderEpoch	3
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
-readyToFetchBrokers	{3}
-aliveBrokers	{2, 3}
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+18. ProduceBehavior:ShutdownUnstableBroker
 leader	-1
+readyToFetchBrokers	{3}
+aliveBrokers	{2, 3}
+inflightProducers	{1, 2}
+produceMessageSeq	<<3, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 3, leader |-> 1]>>
 isrs	{1}
-14. UncleanLeaderElectionSafety:UncleanLeaderElection3
-nextOffset	3
-committedLogs	<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>
-leaderEpoch	4
-localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2], [leaderEpoch |-> 3, offset |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 2, offset |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1], [leaderEpoch |-> 1, offset |-> 2]>>>>
+shutdownBrokers	{1}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2], [leaderEpoch |-> 3, offset |-> 3, producer |-> 1, producerSeq |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>>>
+leaderEpoch	3
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
+19. ProduceBehavior:UncleanLeaderElection3
+leader	2
 readyToFetchBrokers	{}
 aliveBrokers	{2, 3}
-leader	2
+inflightProducers	{1, 2}
+produceMessageSeq	<<3, 2>>
+localLeaderEpochs	<<[leaderEpoch |-> 3, leader |-> 1], [leaderEpoch |-> 2, leader |-> 3], [leaderEpoch |-> 3, leader |-> 1]>>
 isrs	{2}
+shutdownBrokers	{1}
+producerLeaderMetadata	<<1, 3>>
+localLogs	<<<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2], [leaderEpoch |-> 3, offset |-> 3, producer |-> 1, producerSeq |-> 3]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 2, offset |-> 2, producer |-> 2, producerSeq |-> 2]>>, <<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>>>
+leaderEpoch	4
+preferredLeader	1
+committedLogs	<<[leaderEpoch |-> 1, offset |-> 1, producer |-> 1, producerSeq |-> 1], [leaderEpoch |-> 1, offset |-> 2, producer |-> 1, producerSeq |-> 2]>>
