@@ -11,8 +11,6 @@ VARIABLES
     committedMessages,
     zkState,
     replicaStates,
-    \* Tracks the set of producers that produced message is in-flight (i.e. not committed).
-    \* Used to simulate max.in.flight.requests.per.connection = 1
     inflightProducers
 
 \* Shorthand to access local logs of the replica
@@ -67,13 +65,13 @@ NewReplicaState(localLog, isShutdown, readyToFetch) ==
 Init ==
     /\ committedMessages = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
     /\ zkState = [leaderEpoch |-> 1,
-                  leader |-> 2,
+                  leader |-> 1,
                   isrs |-> Replicas,
                   aliveReplicas |-> Replicas,
                   preferredLeader |-> UnstableReplica]
     /\ replicaStates = [[replica \in Replicas |-> NewReplicaState(
                                                     <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, FALSE, TRUE)]
-                            EXCEPT![2] = [@ EXCEPT!.readyToFetch = FALSE]]
+                            EXCEPT![UnstableReplica] = [@ EXCEPT!.readyToFetch = FALSE]]
     /\ inflightProducers = {}
 
 (***** Actions *****)

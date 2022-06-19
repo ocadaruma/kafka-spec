@@ -1,108 +1,102 @@
 00:00:00	0	1	1	1
-00:00:03	11	193153	64510	33206
-00:01:03	15	3747897	1142904	533957
-00:02:03	16	7047782	2121095	981388
-00:02:58	17	9839177	2942473	1357247
+00:00:03	11	203846	68076	35218
+00:01:03	15	3390457	1034900	487058
+00:01:35	16	5237024	1581401	738465
 
 
 UncleanLeaderElectionSafety	Init	3	3
-UncleanLeaderElectionSafety	ProduceMessage	764604	492341
-UncleanLeaderElectionSafety	Replicate	1068867	373967
-UncleanLeaderElectionSafety	BecomeOutOfSync	231979	59979
-UncleanLeaderElectionSafety	BecomeInSync	91251	32193
-UncleanLeaderElectionSafety	PreferredLeaderElection	306975	171571
-UncleanLeaderElectionSafety	SwapPreferredLeader	3170482	383778
-UncleanLeaderElectionSafety	LeaderFailure	258117	179655
-UncleanLeaderElectionSafety	FailedReplicaBack	568124	272896
-UncleanLeaderElectionSafety	UnstableReplicaDiesWhenLeader	219853	219849
-UncleanLeaderElectionSafety	UnstableReplicaDiesWhenFollower	709477	95987
-UncleanLeaderElectionSafety	ElectNewLeader	320847	153532
-UncleanLeaderElectionSafety	BecomeFollower	2077107	497961
-UncleanLeaderElectionSafety	UncleanLeaderElectionChooseLatestOffset	51613	8763
+UncleanLeaderElectionSafety	ProduceMessage	378330	225590
+UncleanLeaderElectionSafety	Replicate	612389	153753
+UncleanLeaderElectionSafety	BecomeOutOfSync	117803	34408
+UncleanLeaderElectionSafety	BecomeInSync	64253	24143
+UncleanLeaderElectionSafety	PreferredLeaderElection	122871	70966
+UncleanLeaderElectionSafety	SwapPreferredLeader	1685904	224327
+UncleanLeaderElectionSafety	LeaderFailure	151958	101695
+UncleanLeaderElectionSafety	FailedReplicaBack	316919	164565
+UncleanLeaderElectionSafety	UnstableReplicaDiesWhenLeader	135956	135938
+UncleanLeaderElectionSafety	UnstableReplicaDiesWhenFollower	376036	63108
+UncleanLeaderElectionSafety	ElectNewLeader	183579	102938
+UncleanLeaderElectionSafety	BecomeFollower	1051496	271414
+UncleanLeaderElectionSafety	UncleanLeaderElectionChooseLatestOffset	39669	8555
 
 
 1. Initial predicate
-zkState	[leader |-> 2, leaderEpoch |-> 1, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
+zkState	[leader |-> 1, leaderEpoch |-> 1, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
 2. UncleanLeaderElectionSafety:ProduceMessage
-zkState	[leader |-> 2, leaderEpoch |-> 1, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
+zkState	[leader |-> 1, leaderEpoch |-> 1, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{1}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-3. UncleanLeaderElectionSafety:PreferredLeaderElection
-zkState	[leader |-> 1, leaderEpoch |-> 2, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+3. UncleanLeaderElectionSafety:BecomeOutOfSync
+zkState	[leader |-> 1, leaderEpoch |-> 1, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{1}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-4. UncleanLeaderElectionSafety:ProduceMessage
-zkState	[leader |-> 1, leaderEpoch |-> 2, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
-inflightProducers	{1, 2}
+4. UncleanLeaderElectionSafety:SwapPreferredLeader
+zkState	[leader |-> 1, leaderEpoch |-> 1, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 3]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
+inflightProducers	{1}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-5. UncleanLeaderElectionSafety:SwapPreferredLeader
-zkState	[leader |-> 1, leaderEpoch |-> 2, isrs |-> {1, 2, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 2]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
-inflightProducers	{1, 2}
+5. UncleanLeaderElectionSafety:PreferredLeaderElection
+zkState	[leader |-> 3, leaderEpoch |-> 2, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 3]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+inflightProducers	{1}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-6. UncleanLeaderElectionSafety:BecomeOutOfSync
-zkState	[leader |-> 1, leaderEpoch |-> 2, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 2]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
-inflightProducers	{1, 2}
+6. UncleanLeaderElectionSafety:SwapPreferredLeader
+zkState	[leader |-> 3, leaderEpoch |-> 2, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+inflightProducers	{1}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
 7. UncleanLeaderElectionSafety:BecomeFollower
-zkState	[leader |-> 1, leaderEpoch |-> 2, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 2]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
+zkState	[leader |-> 3, leaderEpoch |-> 2, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+inflightProducers	{1}
+committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
+8. UncleanLeaderElectionSafety:ProduceMessage
+zkState	[leader |-> 3, leaderEpoch |-> 2, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-8. UncleanLeaderElectionSafety:Replicate
-zkState	[leader |-> 1, leaderEpoch |-> 2, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 2]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
+9. UncleanLeaderElectionSafety:Replicate
+zkState	[leader |-> 3, leaderEpoch |-> 2, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-9. UncleanLeaderElectionSafety:PreferredLeaderElection
-zkState	[leader |-> 2, leaderEpoch |-> 3, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 2]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
-inflightProducers	{1, 2}
-committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
-10. UncleanLeaderElectionSafety:SwapPreferredLeader
-zkState	[leader |-> 2, leaderEpoch |-> 3, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+10. UncleanLeaderElectionSafety:PreferredLeaderElection
+zkState	[leader |-> 1, leaderEpoch |-> 3, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
 11. UncleanLeaderElectionSafety:BecomeFollower
-zkState	[leader |-> 2, leaderEpoch |-> 3, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+zkState	[leader |-> 1, leaderEpoch |-> 3, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
 12. UncleanLeaderElectionSafety:Replicate
-zkState	[leader |-> 2, leaderEpoch |-> 3, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+zkState	[leader |-> 1, leaderEpoch |-> 3, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>
-13. UncleanLeaderElectionSafety:PreferredLeaderElection
-zkState	[leader |-> 1, leaderEpoch |-> 4, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
-inflightProducers	{2}
-committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>
-14. UncleanLeaderElectionSafety:ProduceMessage
-zkState	[leader |-> 1, leaderEpoch |-> 4, isrs |-> {1, 2}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 4, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+13. UncleanLeaderElectionSafety:ProduceMessage
+zkState	[leader |-> 1, leaderEpoch |-> 3, isrs |-> {1, 3}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 3, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>
-15. UncleanLeaderElectionSafety:BecomeOutOfSync
-zkState	[leader |-> 1, leaderEpoch |-> 4, isrs |-> {1}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 4, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+14. UncleanLeaderElectionSafety:BecomeOutOfSync
+zkState	[leader |-> 1, leaderEpoch |-> 3, isrs |-> {1}, aliveReplicas |-> {1, 2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 3, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>
-16. UncleanLeaderElectionSafety:UnstableReplicaDiesWhenLeader
-zkState	[leader |-> -1, leaderEpoch |-> 4, isrs |-> {1}, aliveReplicas |-> {2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 4, producer |-> 1]>>, isShutdown |-> TRUE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+15. UncleanLeaderElectionSafety:UnstableReplicaDiesWhenLeader
+zkState	[leader |-> -1, leaderEpoch |-> 3, isrs |-> {1}, aliveReplicas |-> {2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 3, producer |-> 1]>>, isShutdown |-> TRUE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> TRUE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>
-17. UncleanLeaderElectionSafety:UncleanLeaderElectionChooseLatestOffset
-zkState	[leader |-> 3, leaderEpoch |-> 5, isrs |-> {3}, aliveReplicas |-> {2, 3}, preferredLeader |-> 1]
-replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 4, producer |-> 1]>>, isShutdown |-> TRUE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
+16. UncleanLeaderElectionSafety:UncleanLeaderElectionChooseLatestOffset
+zkState	[leader |-> 2, leaderEpoch |-> 4, isrs |-> {2}, aliveReplicas |-> {2, 3}, preferredLeader |-> 1]
+replicaStates	<<[localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1], [offset |-> 3, leaderEpoch |-> 3, producer |-> 1]>>, isShutdown |-> TRUE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 2, producer |-> 2]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE], [localLog |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>, isShutdown |-> FALSE, readyToFetch |-> FALSE]>>
 inflightProducers	{1, 2}
 committedMessages	<<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1], [offset |-> 2, leaderEpoch |-> 1, producer |-> 1]>>
