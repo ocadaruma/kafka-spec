@@ -2,401 +2,257 @@
 EXTENDS Integers, Sequences, FiniteSets, Util
 
 CONSTANTS
-    Brokers,
-    UnstableBroker,
+    Replicas,
+    UnstableReplica,
     MinIsr,
-    MaxLogLen,
     Producers
 
-ASSUME
-    /\ Brokers \subseteq Nat
-    /\ UnstableBroker \in Brokers
-    /\ MinIsr \in Nat /\ MinIsr >= 0 /\ MinIsr <= Cardinality(Brokers)
-    /\ MaxLogLen \in Nat /\ MaxLogLen > 0
-    /\ Producers \subseteq Nat
-
 VARIABLES
-    \* sequence of records ([offset |-> integer, leaderEpoch |-> integer]) that
-    \* replicated to all insync replicas (i.e. producer with acks=all received successful response)
+    committedMessages,
+    zkState,
+    replicaStates,
+    \* Tracks the set of producers that produced message is in-flight (i.e. not committed).
+    \* Used to simulate max.in.flight.requests.per.connection = 1
+    inflightProducers
 
-    committedLogs,
-    leaderEpoch,
-    localLogs,
-    aliveBrokers,
-    readyToFetchBrokers,
-    isrs,
-    leader,
-    inflightProducers,
-    preferredLeader,
-    shutdownBrokers,
-    producerLeaderMetadata,
-    localLeaderEpochs,
-    produceMessageSeq
+\* Shorthand to access local logs of the replica
+LocalLog(replica) == replicaStates[replica].localLog
 
-vars == <<committedLogs,
-          leaderEpoch,
-          localLogs,
-          aliveBrokers,
-          readyToFetchBrokers,
-          isrs,
-          leader,
-          inflightProducers,
-          preferredLeader,
-          shutdownBrokers,
-          producerLeaderMetadata,
-          localLeaderEpochs,
-          produceMessageSeq>>
-
-\*TypeOK ==
-\*    /\ \A i \in DOMAIN committedLogs: committedLogs[i] \in [{"offset", "leaderEpoch", "producer"} -> Int]
-\*\*    /\ nextOffset \in Int
-\*    /\ leaderEpoch \in Int
-\*    /\ aliveBrokers \subseteq Brokers
-\*    /\ readyToFetchBrokers \subseteq Brokers
-\*    /\ isrs \subseteq Brokers
-\*    /\ leader = -1 \/ leader \in Brokers
-\*    /\ inflightProducers \subseteq Producers
-\*    /\ preferredLeader \in Brokers
-
-\* Helpers
-
-\* Slightly different definition from Kafka's actual leo (i.e. "next offset" against last appended message)
+\* Log end offset of the replica.
+\* Slightly different definition from Kafka's actual leo (i.e. "next offset" of the last appended message)
 \* for simplicity. Should be fine as it doesn't affect the verification
-Leo(broker) ==
-    Last(localLogs[broker]).offset
+Leo(replica) == Last(LocalLog(replica)).offset
 
-LeaderEpochStartOffset ==
-    LET currentEpochLogs == SelectSeq(localLogs[leader], LAMBDA m : m.leaderEpoch = leaderEpoch)
+NoLeader == zkState.leader = -1
+
+HighWatermark == Last(committedMessages).offset
+
+\* Partition#isFollowerInSync
+IsFollowerInSync(replica) ==
+    LET currentEpochLogs == SelectSeq(LocalLog(zkState.leader), LAMBDA m : m.leaderEpoch = zkState.leaderEpoch)
      IN IF Len(currentEpochLogs) > 0 THEN
-            currentEpochLogs[1].offset
-        ELSE
-            Last(localLogs[leader]).offset + 1
+            /\ Leo(replica) >= Head(currentEpochLogs).offset
+            /\ Leo(replica) >= HighWatermark
+        ELSE FALSE
 
-UnreplicatedLogs(broker) ==
-    LET i == CHOOSE j \in 1..Len(localLogs[leader]) : SubSeq(localLogs[leader], 1, j) = localLogs[broker]
-     IN IF i = Len(localLogs[leader]) THEN
+\* The logs that not existed in the replica yet so need to be replicated from leader.
+UnreplicatedLogs(replica) ==
+    LET leaderLogLen == Len(LocalLog(zkState.leader))
+        i == CHOOSE j \in 1..leaderLogLen : SubSeq(LocalLog(zkState.leader), 1, j) = LocalLog(replica)
+     IN IF i = leaderLogLen THEN
             \* fully caught up
             <<>>
         ELSE
-            SubSeq(localLogs[leader], i + 1, Len(localLogs[leader]))
+            SubSeq(LocalLog(zkState.leader), i + 1, leaderLogLen)
 
-NoLeader ==
-    leader = -1
+\* Returns truncated log for the replica assuming the newLeader has been elected.
+TruncatedLog(replica, newLeader) ==
+    LET minLogLen == Min({Len(LocalLog(replica)), Len(LocalLog(newLeader))})
+        commonPrefixIdx == {i \in 1..minLogLen: SubSeq(LocalLog(replica), 1, i) = SubSeq(LocalLog(newLeader), 1, i)}
+     IN SubSeq(LocalLog(replica), 1, Max(commonPrefixIdx))
 
-HighWatermark ==
-    Last(committedLogs).offset
+AppendToLog(replica, log) ==
+    Append(LocalLog(replica), log)
 
-TruncatedLog(broker, newLeader) ==
-    LET minLogLen == Min({Len(localLogs[broker]), Len(localLogs[newLeader])})
-        commonPrefixIdx == {i \in 1..minLogLen: SubSeq(localLogs[broker], 1, i) = SubSeq(localLogs[newLeader], 1, i)}
-     IN SubSeq(localLogs[broker], 1, Max(commonPrefixIdx))
+NextOffset(replica) ==
+    Last(LocalLog(replica)).offset + 1
+
+NewReplicaState(localLog, isShutdown, readyToFetch) ==
+    [localLog |-> localLog, isShutdown |-> isShutdown, readyToFetch |-> readyToFetch]
+
+(***** Initial state *****)
 
 \* Supply one log at initial just for simplicity so that
-\* we can retrieve the element of logs without considering empty case
+\* we can access the element of any logs without considering empty case
 Init ==
-    /\ committedLogs = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1, producerSeq |-> 1]>>
-    /\ leaderEpoch = 1
-    /\ localLogs = [broker \in Brokers |-> <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1, producerSeq |-> 1]>>]
-    /\ aliveBrokers = Brokers
-    /\ isrs = Brokers
-    /\ leader = 1
-    /\ readyToFetchBrokers = Brokers \ {leader}
+    /\ committedMessages = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
+    /\ zkState = [leaderEpoch |-> 1,
+                  leader |-> 2,
+                  isrs |-> Replicas,
+                  aliveReplicas |-> Replicas,
+                  preferredLeader |-> UnstableReplica]
+    /\ replicaStates = [[replica \in Replicas |-> NewReplicaState(
+                                                    <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, FALSE, TRUE)]
+                            EXCEPT![2] = [@ EXCEPT!.readyToFetch = FALSE]]
     /\ inflightProducers = {}
-    /\ preferredLeader = 1
-    /\ shutdownBrokers = {}
-    /\ producerLeaderMetadata = [producer \in Producers |-> leader]
-    /\ localLeaderEpochs = [broker \in Brokers |-> [leader |-> leader, leaderEpoch |-> leaderEpoch]]
-    /\ produceMessageSeq = [producer \in Producers |-> 1]
 
-ProduceMessage ==
+(***** Actions *****)
+
+ProduceMessage(replica) ==
+    \* Assumes producers always have latest leader info
+    /\ replica = zkState.leader
     /\ LET readyProducers == Producers \ inflightProducers
         \* further produce not sent until corrent one is committed (max.inflight.requests.per.connection = 1)
         IN /\ Cardinality(readyProducers) > 0
-           /\ \E p \in readyProducers:
-                LET producerLeader == producerLeaderMetadata[p]
-                    epoch == localLeaderEpochs[producerLeader].leaderEpoch
-                IN
-                  /\ producerLeader = localLeaderEpochs[producerLeader].leader
-                  /\ localLeaderEpochs[producerLeader].leaderEpoch = leaderEpoch
-                  /\ localLogs' = [localLogs EXCEPT![producerLeader] = Append(@, [offset |-> Last(@).offset + 1,
-                                                                                  leaderEpoch |-> epoch,
-                                                                                  producer |-> p,
-                                                                                  producerSeq |-> produceMessageSeq[p] + 1])]
-                  /\ inflightProducers' = inflightProducers \cup {p}
-                  /\ produceMessageSeq' = [produceMessageSeq EXCEPT![p] = @ + 1]
-                  /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers, preferredLeader, shutdownBrokers, producerLeaderMetadata, localLeaderEpochs>>
+           /\ \E producer \in readyProducers:
+                  /\ inflightProducers' = inflightProducers \cup {producer}
+                  /\ replicaStates' = [replicaStates EXCEPT![replica] =
+                                        [@ EXCEPT!.localLog = Append(@, [offset |-> NextOffset(replica),
+                                                                         leaderEpoch |-> zkState.leaderEpoch,
+                                                                         producer |-> producer])]]
+                  /\ UNCHANGED <<committedMessages, zkState>>
 
-RetryProduce ==
-    \E p \in inflightProducers:
-        /\ ~NoLeader
-        /\ IF producerLeaderMetadata[p] /= leader THEN
-                producerLeaderMetadata' = [producerLeaderMetadata EXCEPT![p] = leader]
-           ELSE
-                producerLeaderMetadata' = producerLeaderMetadata
-        /\ LET
-            producerLeader == leader
-            epoch == localLeaderEpochs[producerLeader].leaderEpoch
-           IN
-             /\ producerLeader = localLeaderEpochs[producerLeader].leader
-             /\ localLogs' = [localLogs EXCEPT![producerLeader] = Append(@, [offset |-> Last(@).offset + 1,
-                                                                             leaderEpoch |-> epoch,
-                                                                             producer |-> p,
-                                                                             producerSeq |-> produceMessageSeq[p]])]
-             /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers, preferredLeader, shutdownBrokers, localLeaderEpochs, produceMessageSeq, inflightProducers>>
-
-UpdateMetadata ==
+\* Assumes producers always have latest leader info.
+Replicate(replica) ==
     /\ ~NoLeader
-    /\ \E p \in Producers:
-        /\ producerLeaderMetadata[p] /= leader
-        /\ producerLeaderMetadata' = [producerLeaderMetadata EXCEPT![p] = leader]
-        /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers, preferredLeader, shutdownBrokers, localLogs, inflightProducers, localLeaderEpochs, produceMessageSeq>>
+    /\ replica /= zkState.leader
+    /\ replicaStates[replica].readyToFetch
+    /\ LET unreplicatedLogs == UnreplicatedLogs(replica)
+        IN /\ Len(unreplicatedLogs) > 0
+           /\ \E i \in 1..Len(unreplicatedLogs):
+                LET newReplicaStates == [replicaStates EXCEPT![replica] =
+                                            [@ EXCEPT!.localLog = @ \o SubSeq(unreplicatedLogs, 1, i)]]
+                    newCommittedMessages ==
+                        IF Cardinality(zkState.isrs) >= MinIsr THEN
+                            LET minLogLen == Min({Len(newReplicaStates[r].localLog) : r \in zkState.isrs})
+                                committed == {k \in 1..minLogLen: \A r \in zkState.isrs \ {zkState.leader}:
+                                                SubSeq(newReplicaStates[r].localLog, 1, k) =
+                                                    SubSeq(newReplicaStates[zkState.leader].localLog, 1, k)}
+                             IN SubSeq(newReplicaStates[zkState.leader].localLog, 1, Max(committed))
+                        ELSE committedMessages
+                     IN /\ replicaStates' = newReplicaStates
+                        /\ committedMessages' = newCommittedMessages
+                        /\ inflightProducers' = inflightProducers \ {newCommittedMessages[r].producer:
+                                                                        r \in DOMAIN newCommittedMessages \ DOMAIN committedMessages}
+    /\ UNCHANGED <<zkState>>
 
-Replicate(broker) ==
+BecomeOutOfSync(replica) ==
     /\ ~NoLeader
-    /\ broker \in aliveBrokers
-    /\ broker \in readyToFetchBrokers
-    /\ broker /= leader
-    /\ LET unreplicatedLogs == UnreplicatedLogs(broker)
-        IN IF Len(unreplicatedLogs) = 0 THEN
-                /\ localLogs' = localLogs
-                /\ committedLogs' = committedLogs
-                /\ UNCHANGED <<inflightProducers>>
-           ELSE
-                \E i \in 1..Len(unreplicatedLogs):
-                    LET newLocalLogs == [localLogs EXCEPT![broker] = @ \o SubSeq(unreplicatedLogs, 1, i)]
-                        newCommittedLogs ==
-                            IF Cardinality(isrs) >= MinIsr THEN
-                                LET minLogLen == Min({Len(newLocalLogs[b]) : b \in isrs})
-                                    committed == {k \in 1..minLogLen: \A b \in isrs \ {leader}:
-                                                    SubSeq(newLocalLogs[b], 1, k) = SubSeq(newLocalLogs[leader], 1, k)}
-                                 IN SubSeq(newLocalLogs[leader], 1, Max(committed))
-                            ELSE
-                                   committedLogs
-                     IN /\ localLogs' = newLocalLogs
-                        /\ committedLogs' = newCommittedLogs
-                        /\ inflightProducers' = inflightProducers \ {newCommittedLogs[r].producer:
-                                                                        r \in DOMAIN newCommittedLogs \ DOMAIN committedLogs}
-    /\ UNCHANGED <<leaderEpoch, aliveBrokers, isrs, leader, readyToFetchBrokers, preferredLeader, shutdownBrokers, producerLeaderMetadata, localLeaderEpochs, produceMessageSeq>>
-
-BecomeOutOfSync(broker) ==
-    /\ ~NoLeader
-    /\ \/ leader = UnstableBroker
-       \/ broker = UnstableBroker
-    /\ broker /= leader
-    /\ broker \in isrs
-    /\ broker \in readyToFetchBrokers
-    /\ Leo(broker) < Leo(leader)
-    /\ isrs' = isrs \ {broker}
-    /\ LET newIsrs == isrs \ {broker}
-           newCommittedLogs ==
+    /\ \/ zkState.leader = UnstableReplica
+       \/ replica = UnstableReplica
+    /\ replica /= zkState.leader
+    /\ replica \in zkState.isrs
+    /\ Leo(replica) < Leo(zkState.leader)
+    /\ zkState' = [zkState EXCEPT!.isrs = @ \ {replica}]
+    /\ LET newIsrs == zkState.isrs \ {replica}
+           newCommittedMessages ==
                IF Cardinality(newIsrs) >= MinIsr THEN
-                   LET minLogLen == Min({Len(localLogs[b]) : b \in newIsrs})
-                       committed == {k \in 1..minLogLen: \A b \in newIsrs \ {leader}:
-                                       SubSeq(localLogs[b], 1, k) = SubSeq(localLogs[leader], 1, k)}
-                    IN SubSeq(localLogs[leader], 1, Max(committed))
+                   LET minLogLen == Min({Len(LocalLog(r)) : r \in newIsrs})
+                       committed == {k \in 1..minLogLen: \A r \in newIsrs \ {zkState.leader}:
+                                       SubSeq(LocalLog(r), 1, k) = SubSeq(LocalLog(zkState.leader), 1, k)}
+                    IN SubSeq(LocalLog(zkState.leader), 1, Max(committed))
                ELSE
-                      committedLogs
-        IN /\ committedLogs' = newCommittedLogs
-           /\ inflightProducers' = inflightProducers \ {newCommittedLogs[r].producer:
-                                                           r \in DOMAIN newCommittedLogs \ DOMAIN committedLogs}
-    /\ UNCHANGED <<leaderEpoch, localLogs, aliveBrokers, leader, readyToFetchBrokers, preferredLeader, shutdownBrokers, producerLeaderMetadata, localLeaderEpochs, produceMessageSeq>>
+                      committedMessages
+        IN /\ committedMessages' = newCommittedMessages
+           /\ inflightProducers' = inflightProducers \ {newCommittedMessages[r].producer:
+                                                           r \in DOMAIN newCommittedMessages \ DOMAIN committedMessages}
+    /\ UNCHANGED <<replicaStates>>
 
-BecomeInSync(broker) ==
+BecomeInSync(replica) ==
     /\ ~NoLeader
-    /\ broker /= leader
-    /\ broker \notin isrs
-    /\ broker \in aliveBrokers
-    /\ broker \in readyToFetchBrokers
-    /\ /\ Leo(broker) >= HighWatermark
-       /\ Leo(broker) >= LeaderEpochStartOffset
-    /\ isrs' = isrs \cup {broker}
-    /\ UNCHANGED <<
-                    committedLogs,
-                    leaderEpoch,
-                    localLogs,
-                    aliveBrokers,
-                    leader,
-                    readyToFetchBrokers,
-                    inflightProducers,
-                    preferredLeader,
-                    shutdownBrokers,
-                    producerLeaderMetadata,
-                    localLeaderEpochs,
-                    produceMessageSeq
-                 >>
-
-MakeLeader(broker) ==
-    /\ broker = leader
-    /\ \/ localLeaderEpochs[broker].leader /= leader
-       \/ localLeaderEpochs[broker].leaderEpoch /= leaderEpoch
-    /\ localLeaderEpochs' = [localLeaderEpochs EXCEPT![broker] = [leader |-> leader, leaderEpoch |-> leaderEpoch]]
-    /\ UNCHANGED <<
-                    committedLogs,
-                    localLogs,
-                    aliveBrokers,
-                    isrs,
-                    inflightProducers,
-                    shutdownBrokers,
-                    producerLeaderMetadata,
-                    produceMessageSeq,
-                    leaderEpoch,
-                    leader,
-                    readyToFetchBrokers,
-                    preferredLeader
-                 >>
+    /\ replica /= zkState.leader
+    /\ replica \notin zkState.isrs
+    /\ replica \in zkState.aliveReplicas
+    /\ replicaStates[replica].readyToFetch
+    /\ IsFollowerInSync(replica)
+    /\ zkState' = [zkState EXCEPT!.isrs = @ \cup {replica}]
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
 PreferredLeaderElection ==
     /\ ~NoLeader
-    /\ preferredLeader /= leader
-    /\ preferredLeader \in isrs
-    /\ preferredLeader \in aliveBrokers
-    /\ leaderEpoch' = leaderEpoch + 1
-    /\ leader' = preferredLeader
-    /\ readyToFetchBrokers' = {}
-    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, produceMessageSeq, localLeaderEpochs>>
+    /\ zkState.preferredLeader /= zkState.leader
+    /\ zkState.preferredLeader \in zkState.isrs
+    /\ zkState.preferredLeader \in zkState.aliveReplicas
+    /\ zkState' = [zkState EXCEPT!.leaderEpoch = zkState.leaderEpoch + 1,
+                                 !.leader = zkState.preferredLeader]
+    /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
 
-SwapLeadership(broker) ==
-\*    /\ leader = UnstableBroker
-    /\ broker /= leader
-    /\ broker \in isrs
-    /\ broker \in aliveBrokers
-    /\ preferredLeader' = broker
-    /\ UNCHANGED <<
-                committedLogs,
-                localLogs,
-                aliveBrokers,
-                isrs,
-                inflightProducers,
-                shutdownBrokers,
-                producerLeaderMetadata,
-                produceMessageSeq,
-                leaderEpoch,
-                leader,
-                readyToFetchBrokers,
-                localLeaderEpochs>>
+SwapPreferredLeader(replica) ==
+    /\ replica /= zkState.preferredLeader
+    /\ zkState' = [zkState EXCEPT!.preferredLeader = replica]
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
-ShutdownUnstableBroker ==
-\*    /\ leader = UnstableBroker
-\*    /\ UnstableBroker \in aliveBrokers
-\*    /\ isrs = {UnstableBroker}
-    /\ aliveBrokers' = aliveBrokers \ {UnstableBroker}
-    /\ shutdownBrokers' = shutdownBrokers \cup {UnstableBroker}
-    /\ leader' = -1
-    /\ UNCHANGED <<committedLogs, leaderEpoch, localLogs, isrs, readyToFetchBrokers, inflightProducers, preferredLeader, producerLeaderMetadata, localLeaderEpochs, produceMessageSeq>>
-
-LeaderFailure(broker) ==
-    /\ broker = UnstableBroker
-    /\ ~NoLeader
-    /\ leader = broker
-    /\ broker \in aliveBrokers
-    /\ broker \in isrs
-    /\ aliveBrokers' = aliveBrokers \ {broker}
+LeaderFailure(replica) ==
+    /\ replica = UnstableReplica
+    /\ zkState.leader = replica
+    /\ replica \in zkState.aliveReplicas
     \* https://github.com/apache/kafka/blob/2.4.1/core/src/main/scala/kafka/controller/ReplicaStateMachine.scala#L327
-    /\ IF isrs = {broker} THEN isrs' = isrs ELSE isrs' = isrs \ {broker}
-    /\ leader' = -1
-    /\ UNCHANGED <<committedLogs, leaderEpoch, localLogs, readyToFetchBrokers, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, localLeaderEpochs, produceMessageSeq>>
+    /\ zkState' = [zkState EXCEPT!.isrs = IF @ = {replica} THEN @ ELSE @ \ {replica},
+                                 !.leader = -1,
+                                 !.aliveReplicas = @ \ {replica}]
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
-ElectNewLeader(broker) ==
+FailedReplicaBack(replica) ==
+    /\ replica \notin zkState.aliveReplicas
+    /\ zkState' = [zkState EXCEPT!.aliveReplicas = @ \cup {replica}]
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
+
+UnstableReplicaDiesWhenLeader ==
+    /\ ~replicaStates[UnstableReplica].isShutdown
+    /\ zkState.leader = UnstableReplica
+    \* https://github.com/apache/kafka/blob/2.4.1/core/src/main/scala/kafka/controller/ReplicaStateMachine.scala#L327
+    /\ zkState' = [zkState EXCEPT!.isrs = IF @ = {UnstableReplica} THEN @ ELSE @ \ {UnstableReplica},
+                                 !.leader = -1,
+                                 !.aliveReplicas = @ \ {UnstableReplica}]
+    /\ replicaStates' = [replicaStates EXCEPT![UnstableReplica] = [@ EXCEPT!.isShutdown = TRUE]]
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
+
+UnstableReplicaDiesWhenFollower ==
+    /\ ~replicaStates[UnstableReplica].isShutdown
+    /\ zkState.leader /= UnstableReplica
+    /\ zkState' = [zkState EXCEPT!.isrs = @ \ {UnstableReplica},
+                                 !.aliveReplicas = @ \ {UnstableReplica}]
+    /\ replicaStates' = [replicaStates EXCEPT![UnstableReplica] = [@ EXCEPT!.isShutdown = TRUE,
+                                                                           !.readyToFetch = FALSE]]
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
+
+ElectNewLeader(replica) ==
     /\ NoLeader
-    /\ broker \in isrs
-    /\ broker \in aliveBrokers
+    /\ replica \in zkState.isrs
+    /\ replica \in zkState.aliveReplicas
     \* On leadership change, left-most isr in replica list will be elected
-    /\ broker = Min(isrs)
-\*    /\ nextOffset' = Last(localLogs[broker]).offset + 1
-    /\ leaderEpoch' = leaderEpoch + 1
-    /\ leader' = broker
-    /\ readyToFetchBrokers' = {}
-    /\ UNCHANGED <<committedLogs, localLogs, aliveBrokers, isrs, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, produceMessageSeq, localLeaderEpochs>>
+    /\ replica = Min(zkState.isrs)
+    /\ zkState' = [zkState EXCEPT!.leaderEpoch = @ + 1,
+                                 !.leader = replica]
+    /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
 
-FailedBrokerBack(broker) ==
-\*    /\ broker = UnstableBroker
-    /\ broker \notin aliveBrokers
-\*    /\ broker \notin isrs
-    /\ aliveBrokers' = aliveBrokers \cup {broker}
-    /\ UNCHANGED <<committedLogs, leaderEpoch, localLogs, isrs, readyToFetchBrokers, inflightProducers, preferredLeader, leader, shutdownBrokers, producerLeaderMetadata, localLeaderEpochs, produceMessageSeq>>
-
-UncleanLeaderElection ==
-    /\ NoLeader
-    /\ shutdownBrokers /= {}
-    /\ \E broker \in aliveBrokers:
-\*        /\ nextOffset' = Last(localLogs[broker]).offset + 1
-        /\ leaderEpoch' = leaderEpoch + 1
-        /\ isrs' = {broker}
-        /\ leader' = broker
-        /\ readyToFetchBrokers' = {}
-        /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, produceMessageSeq, localLeaderEpochs>>
-
-\* Modified version that elect new leader that has longest local log
-UncleanLeaderElection2 ==
-    /\ NoLeader
-    /\ (aliveBrokers \cap isrs) = {}
-    /\ shutdownBrokers /= {}
-    /\ LET longestLogBrokers ==
-            {broker \in aliveBrokers:
-                \A other \in aliveBrokers \ {broker}: Len(localLogs[broker]) >= Len(localLogs[other])}
-        IN \E broker \in longestLogBrokers:
-\*            /\ nextOffset' = Last(localLogs[broker]).offset + 1
-            /\ leaderEpoch' = leaderEpoch + 1
-            /\ isrs' = {broker}
-            /\ leader' = broker
-            /\ readyToFetchBrokers' = {}
-            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, produceMessageSeq, localLeaderEpochs>>
-
-UncleanLeaderElection3 ==
-    /\ NoLeader
-    /\ (aliveBrokers \cap isrs) = {}
-    /\ shutdownBrokers /= {}
-    /\ LET largestEpochBrokers ==
-            {broker \in aliveBrokers:
-                \A other \in aliveBrokers \ {broker}: Last(localLogs[broker]).leaderEpoch >= Last(localLogs[other]).leaderEpoch}
-           longestLogBrokers ==
-            {broker \in largestEpochBrokers:
-                \A other \in largestEpochBrokers \ {broker}: Last(localLogs[broker]).offset >= Last(localLogs[other]).offset}
-        IN \E broker \in longestLogBrokers:
-\*            /\ nextOffset' = Last(localLogs[broker]).offset + 1
-            /\ leaderEpoch' = leaderEpoch + 1
-            /\ isrs' = {broker}
-            /\ leader' = broker
-            /\ readyToFetchBrokers' = {}
-            /\ UNCHANGED <<committedLogs, aliveBrokers, localLogs, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, produceMessageSeq, localLeaderEpochs>>
-
-MakeFollower(broker) ==
+BecomeFollower(replica) ==
     /\ ~NoLeader
-    /\ broker \notin readyToFetchBrokers
-    /\ broker \in aliveBrokers
-    /\ broker /= leader
-    /\ localLogs' = [localLogs EXCEPT![broker] = TruncatedLog(broker, leader)]
-    /\ readyToFetchBrokers' = readyToFetchBrokers \cup {broker}
-    /\ localLeaderEpochs' = [localLeaderEpochs EXCEPT![broker] = [leader |-> leader, leaderEpoch |-> leaderEpoch]]
-    /\ UNCHANGED <<committedLogs, leaderEpoch, aliveBrokers, isrs, leader, inflightProducers, preferredLeader, shutdownBrokers, producerLeaderMetadata, produceMessageSeq>>
+    /\ replica \in zkState.aliveReplicas
+    /\ replica /= zkState.leader
+    /\ replicaStates' = [replicaStates EXCEPT![replica] = [@ EXCEPT!.localLog = TruncatedLog(replica, zkState.leader),
+                                                                   !.readyToFetch = TRUE]]
+    /\ UNCHANGED <<committedMessages, zkState, inflightProducers>>
 
+UncleanLeaderElectionChooseLatestOffset ==
+    /\ NoLeader
+    /\ (zkState.aliveReplicas \cap zkState.isrs) = {}
+    /\ replicaStates[UnstableReplica].isShutdown
+    /\ LET largestEpochReplicas ==
+            {replica \in zkState.aliveReplicas:
+                \A other \in zkState.aliveReplicas \ {replica}: Last(LocalLog(replica)).leaderEpoch >=
+                                                                Last(LocalLog(other)).leaderEpoch}
+           longestLogReplicas ==
+            {replica \in largestEpochReplicas:
+                \A other \in largestEpochReplicas \ {replica}: Last(LocalLog(replica)).offset >=
+                                                                Last(LocalLog(other)).offset}
+        IN \E replica \in longestLogReplicas:
+            /\ zkState' = [zkState EXCEPT!.leaderEpoch = @ + 1,
+                                         !.leader = replica,
+                                         !.isrs = {replica}]
+            /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
+            /\ UNCHANGED <<committedMessages, inflightProducers>>
+
+(***** Define all possible transistions *****)
 Next ==
-    \/ ProduceMessage
-\*    \/ RetryProduce
-    \/ UpdateMetadata
-    \/ \E broker \in Brokers:
-        \/ Replicate(broker)
-        \/ BecomeOutOfSync(broker)
-        \/ BecomeInSync(broker)
-        \/ LeaderFailure(broker)
-        \/ ElectNewLeader(broker)
-        \/ FailedBrokerBack(broker)
-        \/ SwapLeadership(broker)
-        \/ MakeFollower(broker)
-        \/ MakeLeader(broker)
-    \/ ShutdownUnstableBroker
+    \/ \E replica \in Replicas:
+        \/ ProduceMessage(replica)
+        \/ Replicate(replica)
+        \/ BecomeOutOfSync(replica)
+        \/ BecomeInSync(replica)
+        \/ LeaderFailure(replica)
+        \/ ElectNewLeader(replica)
+        \/ FailedReplicaBack(replica)
+        \/ SwapPreferredLeader(replica)
+        \/ BecomeFollower(replica)
+    \/ UnstableReplicaDiesWhenLeader
+    \/ UnstableReplicaDiesWhenFollower
     \/ PreferredLeaderElection
-\*    \/ UncleanLeaderElection
-\*    \/ UncleanLeaderElection2
-    \/ UncleanLeaderElection3
+    \/ UncleanLeaderElectionChooseLatestOffset
 
-Spec == Init /\ [][Next]_vars
-
-\* Invariants
-CommittedLogNotLost == NoLeader \/ ContainsSeq(localLogs[leader], committedLogs)
-NoDuplicatedMessage == \A i,j \in DOMAIN committedLogs:
-                             (i /= j) => ~(
-                                /\ committedLogs[i].producerSeq = committedLogs[j].producerSeq
-                                /\ committedLogs[i].producer = committedLogs[j].producer
-                             )
+(***** Invariants *****)
+CommittedMessagesNeverLost ==
+    NoLeader \/ ContainsSeq(LocalLog(zkState.leader), committedMessages)
 ====
