@@ -65,7 +65,7 @@ NewReplicaState(localLog, isShutdown, readyToFetch) ==
 Init ==
     /\ committedMessages = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
     /\ zkState = [leaderEpoch |-> 1,
-                  leader |-> 1,
+                  leader |-> UnstableReplica,
                   isrs |-> Replicas,
                   aliveReplicas |-> Replicas,
                   preferredLeader |-> UnstableReplica]
