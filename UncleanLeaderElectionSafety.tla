@@ -1,54 +1,35 @@
 ---- MODULE UncleanLeaderElectionSafety ----
 EXTENDS Integers, Sequences, FiniteSets, Util
 
-(***** Constants *****)
-\* The reason why not CONSTANT here is just for ease of prototyping
-Replicas == {1,2,3}
-UnstableReplica == 1
-MinIsr == 2
-MaxLogLen == 3
-Producers == {1,2}
+CONSTANTS
+    Replicas,
+    UnstableReplica,
+    MinIsr,
+    Producers
 
-(***** Variables that represents system's state *****)
 VARIABLES
-    \* Logs that acked by all ISRs. i.e. Logs that successful response is returned to producer
-    \* Expected to be never lost.
-    committedLogs,
-    \* Tracks partition's state persisted in ZK.
-    \* This is a record in the form of:
-    \*    [leaderEpoch |-> Int,
-    \*     leader |-> Int,
-    \*     isrs |-> Set(Int),
-    \*     aliveReplicas |-> Set(Int),
-    \*     preferredLeader |-> Int]
+    committedMessages,
     zkState,
-    \* Tracks replica's local logs and its states.
-    \* Each replica is a record in the form of:
-    \*    [localLogs |-> <<[offset |-> Int, leaderEpoch |-> Int, producer |-> Int]>>,
-    \*     isShutdown |-> Boolean,
-    \*     readyToFetch |-> Boolean]
     replicaStates,
     \* Tracks the set of producers that produced message is in-flight (i.e. not committed).
     \* Used to simulate max.in.flight.requests.per.connection = 1
     inflightProducers
 
-(***** Helpers *****)
-
 \* Shorthand to access local logs of the replica
-LocalLogs(replica) == replicaStates[replica].localLogs
+LocalLog(replica) == replicaStates[replica].localLog
 
 \* Log end offset of the replica.
 \* Slightly different definition from Kafka's actual leo (i.e. "next offset" of the last appended message)
 \* for simplicity. Should be fine as it doesn't affect the verification
-Leo(replica) == Last(LocalLogs(replica)).offset
+Leo(replica) == Last(LocalLog(replica)).offset
 
 NoLeader == zkState.leader = -1
 
-HighWatermark == Last(committedLogs).offset
+HighWatermark == Last(committedMessages).offset
 
 \* Partition#isFollowerInSync
 IsFollowerInSync(replica) ==
-    LET currentEpochLogs == SelectSeq(LocalLogs(zkState.leader), LAMBDA m : m.leaderEpoch = zkState.leaderEpoch)
+    LET currentEpochLogs == SelectSeq(LocalLog(zkState.leader), LAMBDA m : m.leaderEpoch = zkState.leaderEpoch)
      IN IF Len(currentEpochLogs) > 0 THEN
             /\ Leo(replica) >= Head(currentEpochLogs).offset
             /\ Leo(replica) >= HighWatermark
@@ -56,43 +37,43 @@ IsFollowerInSync(replica) ==
 
 \* The logs that not existed in the replica yet so need to be replicated from leader.
 UnreplicatedLogs(replica) ==
-    LET leaderLogLen == Len(LocalLogs(zkState.leader))
-        i == CHOOSE j \in 1..leaderLogLen : SubSeq(LocalLogs(zkState.leader), 1, j) = LocalLogs(replica)
+    LET leaderLogLen == Len(LocalLog(zkState.leader))
+        i == CHOOSE j \in 1..leaderLogLen : SubSeq(LocalLog(zkState.leader), 1, j) = LocalLog(replica)
      IN IF i = leaderLogLen THEN
             \* fully caught up
             <<>>
         ELSE
-            SubSeq(LocalLogs(zkState.leader), i + 1, leaderLogLen)
+            SubSeq(LocalLog(zkState.leader), i + 1, leaderLogLen)
 
 \* Returns truncated log for the replica assuming the newLeader has been elected.
 TruncatedLog(replica, newLeader) ==
-    LET minLogLen == Min({Len(LocalLogs(replica)), Len(LocalLogs(newLeader))})
-        commonPrefixIdx == {i \in 1..minLogLen: SubSeq(LocalLogs(replica), 1, i) = SubSeq(LocalLogs(newLeader), 1, i)}
-     IN SubSeq(LocalLogs(replica), 1, Max(commonPrefixIdx))
+    LET minLogLen == Min({Len(LocalLog(replica)), Len(LocalLog(newLeader))})
+        commonPrefixIdx == {i \in 1..minLogLen: SubSeq(LocalLog(replica), 1, i) = SubSeq(LocalLog(newLeader), 1, i)}
+     IN SubSeq(LocalLog(replica), 1, Max(commonPrefixIdx))
 
 AppendToLog(replica, log) ==
-    Append(LocalLogs(replica), log)
+    Append(LocalLog(replica), log)
 
 NextOffset(replica) ==
-    Last(LocalLogs(replica)).offset + 1
+    Last(LocalLog(replica)).offset + 1
 
-NewReplicaState(localLogs, isShutdown, readyToFetch) ==
-    [localLogs |-> localLogs, isShutdown |-> isShutdown, readyToFetch |-> readyToFetch]
+NewReplicaState(localLog, isShutdown, readyToFetch) ==
+    [localLog |-> localLog, isShutdown |-> isShutdown, readyToFetch |-> readyToFetch]
 
 (***** Initial state *****)
 
 \* Supply one log at initial just for simplicity so that
 \* we can access the element of any logs without considering empty case
 Init ==
-    /\ committedLogs = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
+    /\ committedMessages = <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>
     /\ zkState = [leaderEpoch |-> 1,
-                  leader |-> UnstableReplica,
+                  leader |-> 2,
                   isrs |-> Replicas,
                   aliveReplicas |-> Replicas,
                   preferredLeader |-> UnstableReplica]
     /\ replicaStates = [[replica \in Replicas |-> NewReplicaState(
                                                     <<[offset |-> 1, leaderEpoch |-> 1, producer |-> 1]>>, FALSE, TRUE)]
-                            EXCEPT![UnstableReplica] = [@ EXCEPT!.readyToFetch = FALSE]]
+                            EXCEPT![2] = [@ EXCEPT!.readyToFetch = FALSE]]
     /\ inflightProducers = {}
 
 (***** Actions *****)
@@ -106,10 +87,10 @@ ProduceMessage(replica) ==
            /\ \E producer \in readyProducers:
                   /\ inflightProducers' = inflightProducers \cup {producer}
                   /\ replicaStates' = [replicaStates EXCEPT![replica] =
-                                        [@ EXCEPT!.localLogs = Append(@, [offset |-> NextOffset(replica),
-                                                                          leaderEpoch |-> zkState.leaderEpoch,
-                                                                          producer |-> producer])]]
-                  /\ UNCHANGED <<committedLogs, zkState>>
+                                        [@ EXCEPT!.localLog = Append(@, [offset |-> NextOffset(replica),
+                                                                         leaderEpoch |-> zkState.leaderEpoch,
+                                                                         producer |-> producer])]]
+                  /\ UNCHANGED <<committedMessages, zkState>>
 
 \* Assumes producers always have latest leader info.
 Replicate(replica) ==
@@ -120,19 +101,19 @@ Replicate(replica) ==
         IN /\ Len(unreplicatedLogs) > 0
            /\ \E i \in 1..Len(unreplicatedLogs):
                 LET newReplicaStates == [replicaStates EXCEPT![replica] =
-                                            [@ EXCEPT!.localLogs = @ \o SubSeq(unreplicatedLogs, 1, i)]]
-                    newCommittedLogs ==
+                                            [@ EXCEPT!.localLog = @ \o SubSeq(unreplicatedLogs, 1, i)]]
+                    newCommittedMessages ==
                         IF Cardinality(zkState.isrs) >= MinIsr THEN
-                            LET minLogLen == Min({Len(newReplicaStates[r].localLogs) : r \in zkState.isrs})
+                            LET minLogLen == Min({Len(newReplicaStates[r].localLog) : r \in zkState.isrs})
                                 committed == {k \in 1..minLogLen: \A r \in zkState.isrs \ {zkState.leader}:
-                                                SubSeq(newReplicaStates[r].localLogs, 1, k) =
-                                                    SubSeq(newReplicaStates[zkState.leader].localLogs, 1, k)}
-                             IN SubSeq(newReplicaStates[zkState.leader].localLogs, 1, Max(committed))
-                        ELSE committedLogs
+                                                SubSeq(newReplicaStates[r].localLog, 1, k) =
+                                                    SubSeq(newReplicaStates[zkState.leader].localLog, 1, k)}
+                             IN SubSeq(newReplicaStates[zkState.leader].localLog, 1, Max(committed))
+                        ELSE committedMessages
                      IN /\ replicaStates' = newReplicaStates
-                        /\ committedLogs' = newCommittedLogs
-                        /\ inflightProducers' = inflightProducers \ {newCommittedLogs[r].producer:
-                                                                        r \in DOMAIN newCommittedLogs \ DOMAIN committedLogs}
+                        /\ committedMessages' = newCommittedMessages
+                        /\ inflightProducers' = inflightProducers \ {newCommittedMessages[r].producer:
+                                                                        r \in DOMAIN newCommittedMessages \ DOMAIN committedMessages}
     /\ UNCHANGED <<zkState>>
 
 BecomeOutOfSync(replica) ==
@@ -144,17 +125,17 @@ BecomeOutOfSync(replica) ==
     /\ Leo(replica) < Leo(zkState.leader)
     /\ zkState' = [zkState EXCEPT!.isrs = @ \ {replica}]
     /\ LET newIsrs == zkState.isrs \ {replica}
-           newCommittedLogs ==
+           newCommittedMessages ==
                IF Cardinality(newIsrs) >= MinIsr THEN
-                   LET minLogLen == Min({Len(LocalLogs(r)) : r \in newIsrs})
+                   LET minLogLen == Min({Len(LocalLog(r)) : r \in newIsrs})
                        committed == {k \in 1..minLogLen: \A r \in newIsrs \ {zkState.leader}:
-                                       SubSeq(LocalLogs(r), 1, k) = SubSeq(LocalLogs(zkState.leader), 1, k)}
-                    IN SubSeq(LocalLogs(zkState.leader), 1, Max(committed))
+                                       SubSeq(LocalLog(r), 1, k) = SubSeq(LocalLog(zkState.leader), 1, k)}
+                    IN SubSeq(LocalLog(zkState.leader), 1, Max(committed))
                ELSE
-                      committedLogs
-        IN /\ committedLogs' = newCommittedLogs
-           /\ inflightProducers' = inflightProducers \ {newCommittedLogs[r].producer:
-                                                           r \in DOMAIN newCommittedLogs \ DOMAIN committedLogs}
+                      committedMessages
+        IN /\ committedMessages' = newCommittedMessages
+           /\ inflightProducers' = inflightProducers \ {newCommittedMessages[r].producer:
+                                                           r \in DOMAIN newCommittedMessages \ DOMAIN committedMessages}
     /\ UNCHANGED <<replicaStates>>
 
 BecomeInSync(replica) ==
@@ -165,7 +146,7 @@ BecomeInSync(replica) ==
     /\ replicaStates[replica].readyToFetch
     /\ IsFollowerInSync(replica)
     /\ zkState' = [zkState EXCEPT!.isrs = @ \cup {replica}]
-    /\ UNCHANGED <<committedLogs, replicaStates, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
 PreferredLeaderElection ==
     /\ ~NoLeader
@@ -175,12 +156,12 @@ PreferredLeaderElection ==
     /\ zkState' = [zkState EXCEPT!.leaderEpoch = zkState.leaderEpoch + 1,
                                  !.leader = zkState.preferredLeader]
     /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
-    /\ UNCHANGED <<committedLogs, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
 
 SwapPreferredLeader(replica) ==
     /\ replica /= zkState.preferredLeader
     /\ zkState' = [zkState EXCEPT!.preferredLeader = replica]
-    /\ UNCHANGED <<committedLogs, replicaStates, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
 LeaderFailure(replica) ==
     /\ replica = UnstableReplica
@@ -190,14 +171,14 @@ LeaderFailure(replica) ==
     /\ zkState' = [zkState EXCEPT!.isrs = IF @ = {replica} THEN @ ELSE @ \ {replica},
                                  !.leader = -1,
                                  !.aliveReplicas = @ \ {replica}]
-    /\ UNCHANGED <<committedLogs, replicaStates, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
 FailedReplicaBack(replica) ==
     /\ replica \notin zkState.aliveReplicas
     /\ zkState' = [zkState EXCEPT!.aliveReplicas = @ \cup {replica}]
-    /\ UNCHANGED <<committedLogs, replicaStates, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, replicaStates, inflightProducers>>
 
-ShutdownUnstableReplicaWhenLeader ==
+UnstableReplicaDiesWhenLeader ==
     /\ ~replicaStates[UnstableReplica].isShutdown
     /\ zkState.leader = UnstableReplica
     \* https://github.com/apache/kafka/blob/2.4.1/core/src/main/scala/kafka/controller/ReplicaStateMachine.scala#L327
@@ -205,16 +186,16 @@ ShutdownUnstableReplicaWhenLeader ==
                                  !.leader = -1,
                                  !.aliveReplicas = @ \ {UnstableReplica}]
     /\ replicaStates' = [replicaStates EXCEPT![UnstableReplica] = [@ EXCEPT!.isShutdown = TRUE]]
-    /\ UNCHANGED <<committedLogs, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
 
-ShutdownUnstableReplicaWhenFollower ==
+UnstableReplicaDiesWhenFollower ==
     /\ ~replicaStates[UnstableReplica].isShutdown
     /\ zkState.leader /= UnstableReplica
     /\ zkState' = [zkState EXCEPT!.isrs = @ \ {UnstableReplica},
                                  !.aliveReplicas = @ \ {UnstableReplica}]
     /\ replicaStates' = [replicaStates EXCEPT![UnstableReplica] = [@ EXCEPT!.isShutdown = TRUE,
                                                                            !.readyToFetch = FALSE]]
-    /\ UNCHANGED <<committedLogs, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
 
 ElectNewLeader(replica) ==
     /\ NoLeader
@@ -225,37 +206,51 @@ ElectNewLeader(replica) ==
     /\ zkState' = [zkState EXCEPT!.leaderEpoch = @ + 1,
                                  !.leader = replica]
     /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
-    /\ UNCHANGED <<committedLogs, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, inflightProducers>>
 
 BecomeFollower(replica) ==
     /\ ~NoLeader
     /\ replica \in zkState.aliveReplicas
     /\ replica /= zkState.leader
-    /\ replicaStates' = [replicaStates EXCEPT![replica] = [@ EXCEPT!.localLogs = TruncatedLog(replica, zkState.leader),
+    /\ replicaStates' = [replicaStates EXCEPT![replica] = [@ EXCEPT!.localLog = TruncatedLog(replica, zkState.leader),
                                                                    !.readyToFetch = TRUE]]
-    /\ UNCHANGED <<committedLogs, zkState, inflightProducers>>
+    /\ UNCHANGED <<committedMessages, zkState, inflightProducers>>
 
-UncleanLeaderElectionChooseLargetEpoch ==
+UncleanLeaderElectionChooseLongestLog ==
     /\ NoLeader
     /\ (zkState.aliveReplicas \cap zkState.isrs) = {}
     /\ replicaStates[UnstableReplica].isShutdown
-    /\ LET largestEpochReplicas ==
+    /\ LET longestLogReplicas ==
             {replica \in zkState.aliveReplicas:
-                \A other \in zkState.aliveReplicas \ {replica}: Last(LocalLogs(replica)).leaderEpoch >=
-                                                                Last(LocalLogs(other)).leaderEpoch}
-           longestLogReplicas ==
-            {replica \in largestEpochReplicas:
-                \A other \in largestEpochReplicas \ {replica}: Last(LocalLogs(replica)).offset >=
-                                                                Last(LocalLogs(other)).offset}
+                \A other \in zkState.aliveReplicas \ {replica}: Last(LocalLog(replica)).offset >=
+                                                                Last(LocalLog(other)).offset}
         IN \E replica \in longestLogReplicas:
             /\ zkState' = [zkState EXCEPT!.leaderEpoch = @ + 1,
                                          !.leader = replica,
                                          !.isrs = {replica}]
             /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
-            /\ UNCHANGED <<committedLogs, inflightProducers>>
+            /\ UNCHANGED <<committedMessages, inflightProducers>>
+
+UncleanLeaderElectionChooseLargestEpoch ==
+    /\ NoLeader
+    /\ (zkState.aliveReplicas \cap zkState.isrs) = {}
+    /\ replicaStates[UnstableReplica].isShutdown
+    /\ LET largestEpochReplicas ==
+            {replica \in zkState.aliveReplicas:
+                \A other \in zkState.aliveReplicas \ {replica}: Last(LocalLog(replica)).leaderEpoch >=
+                                                                Last(LocalLog(other)).leaderEpoch}
+           longestLogReplicas ==
+            {replica \in largestEpochReplicas:
+                \A other \in largestEpochReplicas \ {replica}: Last(LocalLog(replica)).offset >=
+                                                                Last(LocalLog(other)).offset}
+        IN \E replica \in longestLogReplicas:
+            /\ zkState' = [zkState EXCEPT!.leaderEpoch = @ + 1,
+                                         !.leader = replica,
+                                         !.isrs = {replica}]
+            /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
+            /\ UNCHANGED <<committedMessages, inflightProducers>>
 
 (***** Define all possible transistions *****)
-
 Next ==
     \/ \E replica \in Replicas:
         \/ ProduceMessage(replica)
@@ -267,12 +262,13 @@ Next ==
         \/ FailedReplicaBack(replica)
         \/ SwapPreferredLeader(replica)
         \/ BecomeFollower(replica)
-    \/ ShutdownUnstableReplicaWhenLeader
-    \/ ShutdownUnstableReplicaWhenFollower
+    \/ UnstableReplicaDiesWhenLeader
+    \/ UnstableReplicaDiesWhenFollower
     \/ PreferredLeaderElection
-    \/ UncleanLeaderElectionChooseLargetEpoch
+\*    \/ UncleanLeaderElectionChooseLongestLog
+    \/ UncleanLeaderElectionChooseLargestEpoch
 
 (***** Invariants *****)
-
-CommittedLogNotLost == NoLeader \/ ContainsSeq(LocalLogs(zkState.leader), committedLogs)
+CommittedMessagesNeverLost ==
+    NoLeader \/ ContainsSeq(LocalLog(zkState.leader), committedMessages)
 ====
