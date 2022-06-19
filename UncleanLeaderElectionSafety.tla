@@ -216,22 +216,7 @@ BecomeFollower(replica) ==
                                                                    !.readyToFetch = TRUE]]
     /\ UNCHANGED <<committedMessages, zkState, inflightProducers>>
 
-UncleanLeaderElectionChooseLongestLog ==
-    /\ NoLeader
-    /\ (zkState.aliveReplicas \cap zkState.isrs) = {}
-    /\ replicaStates[UnstableReplica].isShutdown
-    /\ LET longestLogReplicas ==
-            {replica \in zkState.aliveReplicas:
-                \A other \in zkState.aliveReplicas \ {replica}: Last(LocalLog(replica)).offset >=
-                                                                Last(LocalLog(other)).offset}
-        IN \E replica \in longestLogReplicas:
-            /\ zkState' = [zkState EXCEPT!.leaderEpoch = @ + 1,
-                                         !.leader = replica,
-                                         !.isrs = {replica}]
-            /\ replicaStates' = [r \in Replicas |-> [replicaStates[r] EXCEPT!.readyToFetch = FALSE]]
-            /\ UNCHANGED <<committedMessages, inflightProducers>>
-
-UncleanLeaderElectionChooseLargestEpoch ==
+UncleanLeaderElectionChooseLatestOffset ==
     /\ NoLeader
     /\ (zkState.aliveReplicas \cap zkState.isrs) = {}
     /\ replicaStates[UnstableReplica].isShutdown
@@ -265,8 +250,7 @@ Next ==
     \/ UnstableReplicaDiesWhenLeader
     \/ UnstableReplicaDiesWhenFollower
     \/ PreferredLeaderElection
-\*    \/ UncleanLeaderElectionChooseLongestLog
-    \/ UncleanLeaderElectionChooseLargestEpoch
+    \/ UncleanLeaderElectionChooseLatestOffset
 
 (***** Invariants *****)
 CommittedMessagesNeverLost ==
